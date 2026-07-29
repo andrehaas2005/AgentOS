@@ -1,0 +1,118 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum RedeSocial {
+  instagram
+  facebook
+  youtube
+  linkedin
+}
+
+enum TipoPost {
+  imagem_frase
+  carrossel
+  animacao
+  video_curto
+  stories
+  reels
+  post
+}
+
+enum StatusCalendario {
+  planejado
+  em_producao
+  aguardando_aprovacao
+  aprovado
+  publicado
+  erro
+}
+
+model Empresa {
+  id              String   @id @default(uuid())
+  nome            String
+  nicho           String?
+  tomDeVoz        String?  @map("tom_de_voz")
+  brandGuidelines Json?    @map("brand_guidelines")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  contasSociais ContaSocial[]
+  calendario    CalendarioItem[]
+
+  @@map("empresas")
+}
+
+model ContaSocial {
+  id          String     @id @default(uuid())
+  empresaId   String     @map("empresa_id")
+  empresa     Empresa    @relation(fields: [empresaId], references: [id])
+  rede        RedeSocial
+  credenciais Json?
+  status      String     @default("desconectado")
+  createdAt   DateTime   @default(now()) @map("created_at")
+
+  @@map("contas_sociais")
+}
+
+model CalendarioItem {
+  id        String            @id @default(uuid())
+  empresaId String            @map("empresa_id")
+  empresa   Empresa           @relation(fields: [empresaId], references: [id])
+  dataHora  DateTime          @map("data_hora")
+  tipoPost  TipoPost          @map("tipo_post")
+  briefing  String?
+  status    StatusCalendario  @default(planejado)
+  createdAt DateTime          @default(now()) @map("created_at")
+
+  conteudos Conteudo[]
+
+  @@map("calendario")
+}
+
+model Conteudo {
+  id           String   @id @default(uuid())
+  calendarioId String   @map("calendario_id")
+  calendario   CalendarioItem @relation(fields: [calendarioId], references: [id])
+  texto        String?
+  midiaUrls    String[] @map("midia_urls")
+  metadata     Json?
+  versao       Int      @default(1)
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  publicacoes Publicacao[]
+
+  @@map("conteudos")
+}
+
+model Publicacao {
+  id             String     @id @default(uuid())
+  conteudoId     String     @map("conteudo_id")
+  conteudo       Conteudo   @relation(fields: [conteudoId], references: [id])
+  rede           RedeSocial
+  externalPostId String?    @map("external_post_id")
+  status         String     @default("pendente")
+  log            String?
+  createdAt      DateTime   @default(now()) @map("created_at")
+
+  @@map("publicacoes")
+}
+
+model ExecucaoAgente {
+  id          String   @id @default(uuid())
+  agente      String
+  empresaId   String?  @map("empresa_id")
+  entrada     Json?
+  saida       Json?
+  custoTokens Int?     @map("custo_tokens")
+  duracaoMs   Int?     @map("duracao_ms")
+  status      String   @default("sucesso")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@map("execucoes_agentes")
+}

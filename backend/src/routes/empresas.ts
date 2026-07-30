@@ -65,18 +65,21 @@ empresasRouter.post("/:id/logo", uploadLogo.single("logo"), async (req, res) => 
 
   const logoUrl = `/uploads/logos/${req.file.filename}`;
   const empresa = await prisma.empresa
-    .update({ where: { id: req.params.id }, data: { logoUrl } })
+    .update({ where: { id: req.params.id }, data: { logoUrl }, include: { contasSociais: true } })
     .catch(() => null);
   if (!empresa) return res.status(404).json({ error: "Empresa não encontrada" });
-  res.json(empresa);
+  res.json(comCredenciaisMascaradas(empresa));
 });
 
 empresasRouter.post("/", async (req, res) => {
   const parsed = empresaInput.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
-  const empresa = await prisma.empresa.create({ data: parsed.data });
-  res.status(201).json(empresa);
+  const empresa = await prisma.empresa.create({
+    data: parsed.data,
+    include: { contasSociais: true },
+  });
+  res.status(201).json(comCredenciaisMascaradas(empresa));
 });
 
 empresasRouter.patch("/:id", async (req, res) => {
@@ -84,8 +87,8 @@ empresasRouter.patch("/:id", async (req, res) => {
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
   const empresa = await prisma.empresa
-    .update({ where: { id: req.params.id }, data: parsed.data })
+    .update({ where: { id: req.params.id }, data: parsed.data, include: { contasSociais: true } })
     .catch(() => null);
   if (!empresa) return res.status(404).json({ error: "Empresa não encontrada" });
-  res.json(empresa);
+  res.json(comCredenciaisMascaradas(empresa));
 });

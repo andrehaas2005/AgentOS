@@ -1,4 +1,13 @@
-export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+function resolverApiUrl(): string {
+  if (typeof window === "undefined") {
+    // Server Components rodam no processo Node do container e não podem usar
+    // URL relativa (o navegador resolve "/api/..." contra a própria origem, o Node não).
+    return process.env.INTERNAL_API_URL || "http://localhost:4000";
+  }
+  return process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+}
+
+export const API_URL = resolverApiUrl();
 
 export type ContaSocial = {
   id: string;

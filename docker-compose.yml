@@ -1,5 +1,5 @@
 services:
-  postgres:
+  agentos-postgres:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
@@ -16,29 +16,32 @@ services:
       timeout: 5s
       retries: 10
 
-  backend:
+  agentos-backend:
     build: ./backend
     restart: unless-stopped
     environment:
-      DATABASE_URL: postgresql://agentos:${POSTGRES_PASSWORD:-agentos}@postgres:5432/agentos
+      DATABASE_URL: postgresql://agentos:${POSTGRES_PASSWORD:-agentos}@agentos-postgres:5432/agentos
       PORT: 4000
     depends_on:
-      postgres:
+      agentos-postgres:
         condition: service_healthy
     ports:
       - "4000:4000"
 
-  dashboard:
-    build: ./dashboard
-    restart: unless-stopped
+  agentos-dashboard:
+    build:
+      context: ./dashboard
+      args:
+        NEXT_PUBLIC_API_URL: http://agentos-backend:4000
     environment:
-      NEXT_PUBLIC_API_URL: http://backend:4000
+      INTERNAL_API_URL: http://agentos-backend:4000
+    restart: unless-stopped
     depends_on:
-      - backend
+      - agentos-backend
     ports:
       - "3000:3000"
 
-  nginx:
+  agentos-nginx:
     image: nginx:alpine
     restart: unless-stopped
     volumes:
@@ -46,8 +49,8 @@ services:
     ports:
       - "80:80"
     depends_on:
-      - dashboard
-      - backend
+      - agentos-dashboard
+      - agentos-backend
 
 volumes:
   pgdata:

@@ -173,12 +173,12 @@ export function ContaSocialManager({
   contasSociais: ContaSocial[];
 }) {
   const router = useRouter();
-  const [contas, setContas] = useState(contasSociais);
+  const [contas, setContas] = useState(contasSociais ?? []);
   const [adicionando, setAdicionando] = useState(false);
   const [editandoId, setEditandoId] = useState<string | null>(null);
 
   useEffect(() => {
-    setContas(contasSociais);
+    setContas(contasSociais ?? []);
   }, [contasSociais]);
 
   function aoAdicionar(conta: ContaSocial) {

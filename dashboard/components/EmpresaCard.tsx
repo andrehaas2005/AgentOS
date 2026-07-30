@@ -8,8 +8,9 @@ import { EmpresaAvatar } from "./EmpresaAvatar";
 
 export function EmpresaCard({ empresa }: { empresa: Empresa }) {
   const [editando, setEditando] = useState(false);
-  const conectadas = empresa.contasSociais.filter((c) => c.status === "conectado").length;
-  const total = empresa.contasSociais.length || 1;
+  const contasSociais = empresa.contasSociais ?? [];
+  const conectadas = contasSociais.filter((c) => c.status === "conectado").length;
+  const total = contasSociais.length || 1;
   const progresso = Math.round((conectadas / total) * 100);
 
   return (
@@ -35,7 +36,7 @@ export function EmpresaCard({ empresa }: { empresa: Empresa }) {
       <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-surface">
         <div className="h-full rounded-full bg-blue-500" style={{ width: `${progresso}%` }} />
       </div>
-      <p className="mt-1 text-xs text-gray-500">{conectadas} de {empresa.contasSociais.length} redes</p>
+      <p className="mt-1 text-xs text-gray-500">{conectadas} de {contasSociais.length} redes</p>
 
       {editando && <EmpresaForm empresa={empresa} onClose={() => setEditando(false)} />}
     </div>

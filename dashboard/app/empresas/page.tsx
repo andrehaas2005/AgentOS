@@ -1,5 +1,6 @@
 import { Sidebar } from "@/components/Sidebar";
 import { EmpresaCard } from "@/components/EmpresaCard";
+import { NovaEmpresaButton } from "@/components/NovaEmpresaButton";
 import { getEmpresas } from "@/lib/api";
 
 export default async function EmpresasPage() {
@@ -9,11 +10,12 @@ export default async function EmpresasPage() {
     <div className="flex min-h-screen">
       <Sidebar />
       <main className="flex-1 p-6">
-        <h1 className="mb-6 text-xl font-semibold text-white">Empresas</h1>
+        <div className="mb-6 flex items-center justify-between">
+          <h1 className="text-xl font-semibold text-white">Empresas</h1>
+          <NovaEmpresaButton />
+        </div>
         {empresas.length === 0 ? (
-          <p className="text-sm text-gray-500">
-            Nenhuma empresa cadastrada ainda. Use a API (POST /api/empresas) para cadastrar a primeira.
-          </p>
+          <p className="text-sm text-gray-500">Nenhuma empresa cadastrada ainda.</p>
         ) : (
           <div className="flex flex-wrap gap-4">
             {empresas.map((empresa) => (

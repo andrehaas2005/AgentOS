@@ -1,12 +1,21 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+
+export type ContaSocial = {
+  id: string;
+  rede: string;
+  rotuloCustom: string | null;
+  credenciais: Record<string, string> | null;
+  status: string;
+};
 
 export type Empresa = {
   id: string;
   nome: string;
   nicho: string | null;
   tomDeVoz: string | null;
+  logoUrl: string | null;
   createdAt: string;
-  contasSociais: { id: string; rede: string; status: string }[];
+  contasSociais: ContaSocial[];
 };
 
 export type CalendarioItem = {
@@ -16,7 +25,7 @@ export type CalendarioItem = {
   tipoPost: string;
   briefing: string | null;
   status: string;
-  empresa: { nome: string };
+  empresa: { nome: string; logoUrl: string | null };
 };
 
 export type ExecucaoAgente = {
@@ -30,18 +39,26 @@ export type ExecucaoAgente = {
   custoTokens?: number | null;
 };
 
+export type ConteudoMetadata = {
+  hashtags?: string[];
+  cta?: string;
+  promptImagem?: string;
+  roteiroVideo?: string;
+};
+
 export type Conteudo = {
   id: string;
   calendarioId: string;
   texto: string | null;
   midiaUrls: string[];
+  metadata?: ConteudoMetadata | null;
   versao: number;
   createdAt: string;
   calendario: {
     tipoPost: string;
     dataHora: string;
     status: string;
-    empresa: { nome: string };
+    empresa: { nome: string; logoUrl: string | null };
   };
   publicacoes: { id: string; rede: string; status: string }[];
 };
@@ -56,7 +73,7 @@ export type Publicacao = {
   conteudo: {
     calendario: {
       tipoPost: string;
-      empresa: { nome: string };
+      empresa: { nome: string; logoUrl: string | null };
     };
   };
 };
@@ -93,8 +110,14 @@ async function safeFetch<T>(path: string, fallback: T): Promise<T> {
   }
 }
 
-export function getStats() {
-  return safeFetch<DashboardStats>("/api/dashboard/stats", {
+function qs(params: Record<string, string | undefined>) {
+  const entradas = Object.entries(params).filter(([, v]) => v);
+  if (entradas.length === 0) return "";
+  return `?${new URLSearchParams(entradas as [string, string][]).toString()}`;
+}
+
+export function getStats(empresaId?: string) {
+  return safeFetch<DashboardStats>(`/api/dashboard/stats${qs({ empresaId })}`, {
     empresas: 0,
     agentesConfigurados: 7,
     postagensAgendadas: 0,
@@ -103,30 +126,120 @@ export function getStats() {
   });
 }
 
-export function getEventos() {
-  return safeFetch<ExecucaoAgente[]>("/api/dashboard/eventos", []);
+export function getEventos(empresaId?: string) {
+  return safeFetch<ExecucaoAgente[]>(`/api/dashboard/eventos${qs({ empresaId })}`, []);
 }
 
 export function getEmpresas() {
   return safeFetch<Empresa[]>("/api/empresas", []);
 }
 
-export function getCalendario(empresaId?: string) {
-  const qs = empresaId ? `?empresaId=${empresaId}` : "";
-  return safeFetch<CalendarioItem[]>(`/api/calendario${qs}`, []);
+export type EmpresaInput = {
+  nome: string;
+  nicho?: string;
+  tomDeVoz?: string;
+};
+
+async function postJson(path: string, dados: unknown): Promise<{ ok: boolean; erro?: string; dados?: unknown }> {
+  try {
+    const res = await fetch(`${API_URL}${path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(dados),
+    });
+    if (!res.ok) return { ok: false, erro: "Não foi possível salvar." };
+    return { ok: true, dados: await res.json() };
+  } catch {
+    return { ok: false, erro: "Falha de conexão com o backend." };
+  }
 }
 
-export function getConteudos(empresaId?: string) {
-  const qs = empresaId ? `?empresaId=${empresaId}` : "";
-  return safeFetch<Conteudo[]>(`/api/conteudos${qs}`, []);
+async function patchJson(path: string, dados: unknown): Promise<{ ok: boolean; erro?: string; dados?: unknown }> {
+  try {
+    const res = await fetch(`${API_URL}${path}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(dados),
+    });
+    if (!res.ok) return { ok: false, erro: "Não foi possível salvar." };
+    return { ok: true, dados: await res.json() };
+  } catch {
+    return { ok: false, erro: "Falha de conexão com o backend." };
+  }
 }
 
-export function getPublicacoes() {
-  return safeFetch<Publicacao[]>("/api/publicacoes", []);
+export async function criarEmpresa(
+  dados: EmpresaInput,
+): Promise<{ ok: boolean; erro?: string; empresa?: Empresa }> {
+  const resultado = await postJson("/api/empresas", dados);
+  return { ...resultado, empresa: resultado.dados as Empresa | undefined };
 }
 
-export function getAgentesStats() {
-  return safeFetch<AgenteStats[]>("/api/agentes", []);
+export function atualizarEmpresa(id: string, dados: Partial<EmpresaInput>) {
+  return patchJson(`/api/empresas/${id}`, dados);
+}
+
+export async function enviarLogoEmpresa(
+  id: string,
+  arquivo: File,
+): Promise<{ ok: boolean; erro?: string }> {
+  try {
+    const form = new FormData();
+    form.append("logo", arquivo);
+    const res = await fetch(`${API_URL}/api/empresas/${id}/logo`, { method: "POST", body: form });
+    if (!res.ok) return { ok: false, erro: "Não foi possível enviar a imagem." };
+    return { ok: true };
+  } catch {
+    return { ok: false, erro: "Falha de conexão com o backend." };
+  }
+}
+
+export type ContaSocialInput = {
+  empresaId: string;
+  rede: string;
+  rotuloCustom?: string;
+  credenciais?: Record<string, string>;
+  status?: string;
+};
+
+export async function criarContaSocial(
+  dados: ContaSocialInput,
+): Promise<{ ok: boolean; erro?: string; conta?: ContaSocial }> {
+  const resultado = await postJson("/api/contas-sociais", dados);
+  return { ...resultado, conta: resultado.dados as ContaSocial | undefined };
+}
+
+export async function atualizarContaSocial(
+  id: string,
+  dados: Partial<Omit<ContaSocialInput, "empresaId">>,
+): Promise<{ ok: boolean; erro?: string; conta?: ContaSocial }> {
+  const resultado = await patchJson(`/api/contas-sociais/${id}`, dados);
+  return { ...resultado, conta: resultado.dados as ContaSocial | undefined };
+}
+
+export async function excluirContaSocial(id: string): Promise<{ ok: boolean }> {
+  try {
+    const res = await fetch(`${API_URL}/api/contas-sociais/${id}`, { method: "DELETE" });
+    return { ok: res.ok };
+  } catch {
+    return { ok: false };
+  }
+}
+
+export function getCalendario(empresaId?: string, status?: string) {
+  return safeFetch<CalendarioItem[]>(`/api/calendario${qs({ empresaId, status })}`, []);
+}
+
+export function getConteudos(empresaId?: string, tipoPost?: string) {
+  return safeFetch<Conteudo[]>(`/api/conteudos${qs({ empresaId, tipoPost })}`, []);
+}
+
+export function getPublicacoes(empresaId?: string, rede?: string) {
+  return safeFetch<Publicacao[]>(`/api/publicacoes${qs({ empresaId, rede })}`, []);
+}
+
+export function getAgentesStats(empresaId?: string) {
+  return safeFetch<AgenteStats[]>(`/api/agentes${qs({ empresaId })}`, []);
 }
 
 export function getAgenteTimeline(nome: string) {

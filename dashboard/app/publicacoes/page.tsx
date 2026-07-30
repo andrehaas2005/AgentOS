@@ -1,5 +1,7 @@
 import { Sidebar } from "@/components/Sidebar";
-import { getPublicacoes } from "@/lib/api";
+import { SelectFiltro } from "@/components/SelectFiltro";
+import { EmpresaAvatar } from "@/components/EmpresaAvatar";
+import { getPublicacoes, getEmpresas } from "@/lib/api";
 
 const STATUS_LABEL: Record<string, string> = {
   pendente: "Pendente",
@@ -7,14 +9,43 @@ const STATUS_LABEL: Record<string, string> = {
   erro: "Erro",
 };
 
-export default async function PublicacoesPage() {
-  const publicacoes = await getPublicacoes();
+const REDE_OPCOES = [
+  { value: "instagram", label: "Instagram" },
+  { value: "facebook", label: "Facebook" },
+  { value: "youtube", label: "YouTube" },
+  { value: "linkedin", label: "LinkedIn" },
+  { value: "tiktok", label: "TikTok" },
+  { value: "blog", label: "Blog" },
+  { value: "outro", label: "Outro" },
+];
+
+export default async function PublicacoesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ empresaId?: string; rede?: string }>;
+}) {
+  const { empresaId, rede } = await searchParams;
+  const [publicacoes, empresas] = await Promise.all([
+    getPublicacoes(empresaId, rede),
+    getEmpresas(),
+  ]);
 
   return (
     <div className="flex min-h-screen">
       <Sidebar />
       <main className="flex-1 p-6">
-        <h1 className="mb-6 text-xl font-semibold text-white">Publicações</h1>
+        <div className="mb-6 flex items-center justify-between">
+          <h1 className="text-xl font-semibold text-white">Publicações</h1>
+          <div className="flex items-center gap-3">
+            <SelectFiltro
+              paramName="empresaId"
+              label="Empresa"
+              placeholder="Todas"
+              opcoes={empresas.map((e) => ({ value: e.id, label: e.nome }))}
+            />
+            <SelectFiltro paramName="rede" label="Rede" placeholder="Todas" opcoes={REDE_OPCOES} />
+          </div>
+        </div>
         {publicacoes.length === 0 ? (
           <p className="text-sm text-gray-500">
             Nenhuma publicação registrada ainda — a publicação real nas redes sociais chega na Fase 2 do
@@ -38,7 +69,16 @@ export default async function PublicacoesPage() {
                     <td className="px-4 py-3 whitespace-nowrap">
                       {new Date(publicacao.createdAt).toLocaleString("pt-BR")}
                     </td>
-                    <td className="px-4 py-3">{publicacao.conteudo.calendario.empresa.nome}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <EmpresaAvatar
+                          nome={publicacao.conteudo.calendario.empresa.nome}
+                          logoUrl={publicacao.conteudo.calendario.empresa.logoUrl}
+                          size={20}
+                        />
+                        {publicacao.conteudo.calendario.empresa.nome}
+                      </div>
+                    </td>
                     <td className="px-4 py-3">{publicacao.rede}</td>
                     <td className="px-4 py-3">{STATUS_LABEL[publicacao.status] ?? publicacao.status}</td>
                     <td className="px-4 py-3 text-gray-500">{publicacao.externalPostId ?? "—"}</td>

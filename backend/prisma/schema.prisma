@@ -13,6 +13,9 @@ enum RedeSocial {
   facebook
   youtube
   linkedin
+  tiktok
+  blog
+  outro
 }
 
 enum TipoPost {
@@ -40,6 +43,7 @@ model Empresa {
   nicho           String?
   tomDeVoz        String?  @map("tom_de_voz")
   brandGuidelines Json?    @map("brand_guidelines")
+  logoUrl         String?  @map("logo_url")
   createdAt       DateTime @default(now()) @map("created_at")
 
   contasSociais ContaSocial[]
@@ -49,13 +53,14 @@ model Empresa {
 }
 
 model ContaSocial {
-  id          String     @id @default(uuid())
-  empresaId   String     @map("empresa_id")
-  empresa     Empresa    @relation(fields: [empresaId], references: [id])
-  rede        RedeSocial
-  credenciais Json?
-  status      String     @default("desconectado")
-  createdAt   DateTime   @default(now()) @map("created_at")
+  id           String     @id @default(uuid())
+  empresaId    String     @map("empresa_id")
+  empresa      Empresa    @relation(fields: [empresaId], references: [id])
+  rede         RedeSocial
+  rotuloCustom String?    @map("rotulo_custom")
+  credenciais  Json?
+  status       String     @default("desconectado")
+  createdAt    DateTime   @default(now()) @map("created_at")
 
   @@map("contas_sociais")
 }

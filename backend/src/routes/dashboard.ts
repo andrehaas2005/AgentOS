@@ -13,14 +13,25 @@ const AGENTES_DEFINIDOS = [
   "Publicador",
 ];
 
-dashboardRouter.get("/stats", async (_req, res) => {
+dashboardRouter.get("/stats", async (req, res) => {
+  const empresaId = req.query.empresaId ? String(req.query.empresaId) : undefined;
+
   const [empresas, postagensAgendadas, publicadasNoMes, alertas] = await Promise.all([
     prisma.empresa.count(),
-    prisma.calendarioItem.count({ where: { status: { in: ["planejado", "em_producao", "aguardando_aprovacao", "aprovado"] } } }),
-    prisma.publicacao.count({
-      where: { createdAt: { gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1) }, status: "publicado" },
+    prisma.calendarioItem.count({
+      where: {
+        status: { in: ["planejado", "em_producao", "aguardando_aprovacao", "aprovado"] },
+        empresaId,
+      },
     }),
-    prisma.calendarioItem.count({ where: { status: "erro" } }),
+    prisma.publicacao.count({
+      where: {
+        createdAt: { gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1) },
+        status: "publicado",
+        conteudo: empresaId ? { calendario: { empresaId } } : undefined,
+      },
+    }),
+    prisma.calendarioItem.count({ where: { status: "erro", empresaId } }),
   ]);
 
   res.json({
@@ -32,8 +43,10 @@ dashboardRouter.get("/stats", async (_req, res) => {
   });
 });
 
-dashboardRouter.get("/eventos", async (_req, res) => {
+dashboardRouter.get("/eventos", async (req, res) => {
+  const empresaId = req.query.empresaId ? String(req.query.empresaId) : undefined;
   const eventos = await prisma.execucaoAgente.findMany({
+    where: { empresaId },
     orderBy: { createdAt: "desc" },
     take: 20,
   });

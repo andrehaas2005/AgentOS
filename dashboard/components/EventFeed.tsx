@@ -18,7 +18,7 @@ export function EventFeed({ eventos }: { eventos: ExecucaoAgente[] }) {
       {eventos.length === 0 && (
         <p className="text-sm text-gray-500">Nenhuma execução de agente registrada ainda.</p>
       )}
-      <ul className="flex flex-col gap-3">
+      <ul className="flex max-h-[520px] flex-col gap-3 overflow-y-auto pr-1">
         {eventos.map((evento) => (
           <li key={evento.id} className="flex items-start gap-3">
             <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-surface text-blue-400">

@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
+import type { StatusCalendario } from "@prisma/client";
 import { prisma } from "../db";
 import { executarAgenteCeo } from "../agentes/ceo";
 
@@ -23,9 +24,12 @@ const calendarioInput = z.object({
 });
 
 calendarioRouter.get("/", async (req, res) => {
-  const { empresaId } = req.query;
+  const { empresaId, status } = req.query;
   const itens = await prisma.calendarioItem.findMany({
-    where: empresaId ? { empresaId: String(empresaId) } : undefined,
+    where: {
+      empresaId: empresaId ? String(empresaId) : undefined,
+      status: status ? (String(status) as StatusCalendario) : undefined,
+    },
     include: { empresa: true },
     orderBy: { dataHora: "asc" },
   });

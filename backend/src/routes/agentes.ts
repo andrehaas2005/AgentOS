@@ -22,15 +22,19 @@ agentesRouter.get("/:nome/timeline", async (req, res) => {
   res.json(execucoes);
 });
 
-agentesRouter.get("/", async (_req, res) => {
+agentesRouter.get("/", async (req, res) => {
+  const empresaId = req.query.empresaId ? String(req.query.empresaId) : undefined;
+
   const grupos = await prisma.execucaoAgente.groupBy({
     by: ["agente"],
+    where: { empresaId },
     _count: { _all: true },
     _sum: { custoTokens: true },
     _avg: { duracaoMs: true },
   });
 
   const ultimas = await prisma.execucaoAgente.findMany({
+    where: { empresaId },
     distinct: ["agente"],
     orderBy: { createdAt: "desc" },
     select: { agente: true, status: true, createdAt: true },

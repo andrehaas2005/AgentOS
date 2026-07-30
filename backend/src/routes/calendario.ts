@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../db";
+import { executarAgenteCeo } from "../agentes/ceo";
 
 export const calendarioRouter = Router();
 
@@ -37,4 +38,13 @@ calendarioRouter.post("/", async (req, res) => {
 
   const item = await prisma.calendarioItem.create({ data: parsed.data });
   res.status(201).json(item);
+});
+
+calendarioRouter.post("/:id/executar", async (req, res) => {
+  try {
+    const resultado = await executarAgenteCeo(req.params.id);
+    res.status(200).json(resultado);
+  } catch (error) {
+    res.status(500).json({ error: error instanceof Error ? error.message : "Erro desconhecido" });
+  }
 });

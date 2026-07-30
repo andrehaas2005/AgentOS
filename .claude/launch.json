@@ -1,0 +1,19 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "andre-portfolio",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--prefix", "/Users/andrehaas/andre-portfolio"],
+      "port": 3000,
+      "autoPort": true
+    },
+    {
+      "name": "agentos-dashboard",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--prefix", "/Users/andrehaas/AgentOS/dashboard"],
+      "port": 3000,
+      "autoPort": true
+    }
+  ]
+}

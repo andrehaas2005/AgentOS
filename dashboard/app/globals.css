@@ -7,3 +7,23 @@ body {
   background-color: #0b0d14;
   color: #e6e8ef;
 }
+
+@keyframes agente-trabalhando {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-2px) scale(1.04);
+  }
+}
+
+@keyframes agente-ocioso {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-2deg);
+  }
+  50% {
+    transform: translateY(-3px) rotate(2deg);
+  }
+}

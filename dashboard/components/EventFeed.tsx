@@ -1,5 +1,6 @@
 import { Bot } from "lucide-react";
 import type { ExecucaoAgente } from "@/lib/api";
+import { SPRITE_POR_AGENTE } from "@/lib/agentes";
 
 function tempoRelativo(iso: string) {
   const diffMs = Date.now() - new Date(iso).getTime();
@@ -20,8 +21,18 @@ export function EventFeed({ eventos }: { eventos: ExecucaoAgente[] }) {
       <ul className="flex flex-col gap-3">
         {eventos.map((evento) => (
           <li key={evento.id} className="flex items-start gap-3">
-            <span className="mt-0.5 rounded-full bg-surface p-1.5 text-blue-400">
-              <Bot size={14} />
+            <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-surface text-blue-400">
+              {SPRITE_POR_AGENTE[evento.agente] ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={SPRITE_POR_AGENTE[evento.agente]}
+                  alt={evento.agente}
+                  className="h-full w-full object-cover"
+                  style={{ imageRendering: "pixelated" }}
+                />
+              ) : (
+                <Bot size={14} />
+              )}
             </span>
             <div>
               <p className="text-sm text-gray-200">{evento.agente}</p>

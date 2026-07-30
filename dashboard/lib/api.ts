@@ -24,6 +24,55 @@ export type ExecucaoAgente = {
   agente: string;
   status: string;
   createdAt: string;
+  entrada?: unknown;
+  saida?: unknown;
+  duracaoMs?: number | null;
+  custoTokens?: number | null;
+};
+
+export type Conteudo = {
+  id: string;
+  calendarioId: string;
+  texto: string | null;
+  midiaUrls: string[];
+  versao: number;
+  createdAt: string;
+  calendario: {
+    tipoPost: string;
+    dataHora: string;
+    status: string;
+    empresa: { nome: string };
+  };
+  publicacoes: { id: string; rede: string; status: string }[];
+};
+
+export type Publicacao = {
+  id: string;
+  rede: string;
+  externalPostId: string | null;
+  status: string;
+  log: string | null;
+  createdAt: string;
+  conteudo: {
+    calendario: {
+      tipoPost: string;
+      empresa: { nome: string };
+    };
+  };
+};
+
+export type StatusAtivo = {
+  agente: string;
+  desde: string;
+  descricao: string | null;
+};
+
+export type AgenteStats = {
+  agente: string;
+  totalExecucoes: number;
+  custoTokensTotal: number;
+  duracaoMsMedia: number | null;
+  ultimaExecucao: { status: string; createdAt: string } | null;
 };
 
 export type DashboardStats = {
@@ -65,4 +114,25 @@ export function getEmpresas() {
 export function getCalendario(empresaId?: string) {
   const qs = empresaId ? `?empresaId=${empresaId}` : "";
   return safeFetch<CalendarioItem[]>(`/api/calendario${qs}`, []);
+}
+
+export function getConteudos(empresaId?: string) {
+  const qs = empresaId ? `?empresaId=${empresaId}` : "";
+  return safeFetch<Conteudo[]>(`/api/conteudos${qs}`, []);
+}
+
+export function getPublicacoes() {
+  return safeFetch<Publicacao[]>("/api/publicacoes", []);
+}
+
+export function getAgentesStats() {
+  return safeFetch<AgenteStats[]>("/api/agentes", []);
+}
+
+export function getAgenteTimeline(nome: string) {
+  return safeFetch<ExecucaoAgente[]>(`/api/agentes/${encodeURIComponent(nome)}/timeline`, []);
+}
+
+export function getAgentesStatus() {
+  return safeFetch<StatusAtivo[]>("/api/agentes/status", []);
 }

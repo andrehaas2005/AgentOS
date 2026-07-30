@@ -8,7 +8,7 @@ const empresaInput = z.object({
   nome: z.string().min(1),
   nicho: z.string().optional(),
   tomDeVoz: z.string().optional(),
-  brandGuidelines: z.record(z.any()).optional(),
+  brandGuidelines: z.record(z.string(), z.any()).optional(),
 });
 
 empresasRouter.get("/", async (_req, res) => {

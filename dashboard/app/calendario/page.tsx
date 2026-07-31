@@ -1,5 +1,6 @@
 import { Sidebar } from "@/components/Sidebar";
 import { SelectFiltro } from "@/components/SelectFiltro";
+import { SelectFiltroEmpresa } from "@/components/SelectFiltroEmpresa";
 import { NovaPostagemButton } from "@/components/NovaPostagemButton";
 import { CalendarioTable } from "@/components/CalendarioTable";
 import { getCalendario, getEmpresas } from "@/lib/api";
@@ -30,12 +31,7 @@ export default async function CalendarioPage({
         <div className="mb-6 flex items-center justify-between">
           <h1 className="text-xl font-semibold text-white">Calendário de Postagens</h1>
           <div className="flex items-center gap-3">
-            <SelectFiltro
-              paramName="empresaId"
-              label="Empresa"
-              placeholder="Todas"
-              opcoes={empresas.map((e) => ({ value: e.id, label: e.nome }))}
-            />
+            <SelectFiltroEmpresa empresas={empresas} />
             <SelectFiltro paramName="status" label="Status" placeholder="Todos" opcoes={STATUS_OPCOES} />
             <NovaPostagemButton empresas={empresas} />
           </div>

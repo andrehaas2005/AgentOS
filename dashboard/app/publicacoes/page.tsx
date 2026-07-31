@@ -61,6 +61,7 @@ export default async function PublicacoesPage({
                   <th className="px-4 py-3">Rede</th>
                   <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3">ID externo</th>
+                  <th className="px-4 py-3">Log</th>
                 </tr>
               </thead>
               <tbody>
@@ -82,6 +83,9 @@ export default async function PublicacoesPage({
                     <td className="px-4 py-3">{publicacao.rede}</td>
                     <td className="px-4 py-3">{STATUS_LABEL[publicacao.status] ?? publicacao.status}</td>
                     <td className="px-4 py-3 text-gray-500">{publicacao.externalPostId ?? "—"}</td>
+                    <td className="max-w-xs truncate px-4 py-3 text-gray-500" title={publicacao.log ?? undefined}>
+                      {publicacao.log ?? "—"}
+                    </td>
                   </tr>
                 ))}
               </tbody>

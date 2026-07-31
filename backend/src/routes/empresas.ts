@@ -92,3 +92,9 @@ empresasRouter.patch("/:id", async (req, res) => {
   if (!empresa) return res.status(404).json({ error: "Empresa não encontrada" });
   res.json(comCredenciaisMascaradas(empresa));
 });
+
+empresasRouter.delete("/:id", async (req, res) => {
+  const empresa = await prisma.empresa.delete({ where: { id: req.params.id } }).catch(() => null);
+  if (!empresa) return res.status(404).json({ error: "Empresa não encontrada" });
+  res.status(204).send();
+});

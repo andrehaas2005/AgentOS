@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { X } from "lucide-react";
-import { atualizarEmpresa, criarEmpresa, enviarLogoEmpresa, type Empresa } from "@/lib/api";
+import { atualizarEmpresa, criarEmpresa, enviarLogoEmpresa, excluirEmpresa, type Empresa } from "@/lib/api";
 import { EmpresaAvatar } from "./EmpresaAvatar";
 import { ContaSocialManager } from "./ContaSocialManager";
 
@@ -22,6 +22,7 @@ export function EmpresaForm({ empresa, onClose }: Props) {
   const [previewLogo, setPreviewLogo] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [enviandoLogo, setEnviandoLogo] = useState(false);
+  const [excluindo, setExcluindo] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
   async function salvar() {
@@ -70,6 +71,24 @@ export function EmpresaForm({ empresa, onClose }: Props) {
   }
 
   function concluir() {
+    router.refresh();
+    onClose();
+  }
+
+  async function excluir() {
+    if (!empresaAtual) return;
+    const confirmado = window.confirm(
+      `Excluir "${empresaAtual.nome}"? Isso apaga também as redes sociais, o calendário e os conteúdos dessa empresa. Essa ação não pode ser desfeita.`,
+    );
+    if (!confirmado) return;
+    setExcluindo(true);
+    setErro(null);
+    const resultado = await excluirEmpresa(empresaAtual.id);
+    setExcluindo(false);
+    if (!resultado.ok) {
+      setErro("Não foi possível excluir.");
+      return;
+    }
     router.refresh();
     onClose();
   }
@@ -149,24 +168,38 @@ export function EmpresaForm({ empresa, onClose }: Props) {
 
         {erro && <p className="mt-3 text-xs text-red-400">{erro}</p>}
 
-        <div className="mt-4 flex justify-end gap-2">
-          {empresaAtual && (
+        <div className="mt-4 flex items-center justify-between gap-2">
+          {empresaAtual ? (
             <button
               type="button"
-              onClick={concluir}
-              className="rounded-lg px-3 py-1.5 text-xs text-gray-400 hover:bg-surface hover:text-white"
+              onClick={excluir}
+              disabled={excluindo}
+              className="rounded-lg px-3 py-1.5 text-xs text-red-400 hover:bg-red-500/10 hover:text-red-300 disabled:opacity-50"
             >
-              Fechar
+              {excluindo ? "Excluindo..." : "Excluir empresa"}
             </button>
+          ) : (
+            <span />
           )}
-          <button
-            type="button"
-            onClick={salvar}
-            disabled={salvando}
-            className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-500 disabled:opacity-50"
-          >
-            {salvando ? "Salvando..." : "Salvar"}
-          </button>
+          <div className="flex gap-2">
+            {empresaAtual && (
+              <button
+                type="button"
+                onClick={concluir}
+                className="rounded-lg px-3 py-1.5 text-xs text-gray-400 hover:bg-surface hover:text-white"
+              >
+                Fechar
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={salvar}
+              disabled={salvando}
+              className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-500 disabled:opacity-50"
+            >
+              {salvando ? "Salvando..." : "Salvar"}
+            </button>
+          </div>
         </div>
 
         {empresaAtual && (

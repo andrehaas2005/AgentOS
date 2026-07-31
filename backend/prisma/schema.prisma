@@ -55,7 +55,7 @@ model Empresa {
 model ContaSocial {
   id           String     @id @default(uuid())
   empresaId    String     @map("empresa_id")
-  empresa      Empresa    @relation(fields: [empresaId], references: [id])
+  empresa      Empresa    @relation(fields: [empresaId], references: [id], onDelete: Cascade)
   rede         RedeSocial
   rotuloCustom String?    @map("rotulo_custom")
   credenciais  Json?
@@ -68,7 +68,7 @@ model ContaSocial {
 model CalendarioItem {
   id        String            @id @default(uuid())
   empresaId String            @map("empresa_id")
-  empresa   Empresa           @relation(fields: [empresaId], references: [id])
+  empresa   Empresa           @relation(fields: [empresaId], references: [id], onDelete: Cascade)
   dataHora  DateTime          @map("data_hora")
   tipoPost  TipoPost          @map("tipo_post")
   briefing  String?
@@ -83,7 +83,7 @@ model CalendarioItem {
 model Conteudo {
   id           String   @id @default(uuid())
   calendarioId String   @map("calendario_id")
-  calendario   CalendarioItem @relation(fields: [calendarioId], references: [id])
+  calendario   CalendarioItem @relation(fields: [calendarioId], references: [id], onDelete: Cascade)
   texto        String?
   midiaUrls    String[] @map("midia_urls")
   metadata     Json?
@@ -98,7 +98,7 @@ model Conteudo {
 model Publicacao {
   id             String     @id @default(uuid())
   conteudoId     String     @map("conteudo_id")
-  conteudo       Conteudo   @relation(fields: [conteudoId], references: [id])
+  conteudo       Conteudo   @relation(fields: [conteudoId], references: [id], onDelete: Cascade)
   rede           RedeSocial
   externalPostId String?    @map("external_post_id")
   status         String     @default("pendente")

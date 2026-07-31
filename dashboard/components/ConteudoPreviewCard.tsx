@@ -1,6 +1,7 @@
 import { Image as ImageIcon, GalleryHorizontal, Sparkles, Video, Clapperboard, Film, FileText } from "lucide-react";
 import type { Conteudo } from "@/lib/api";
 import { EmpresaAvatar } from "./EmpresaAvatar";
+import { PublicarInstagramPanel } from "./PublicarInstagramPanel";
 
 const STATUS_LABEL: Record<string, string> = {
   planejado: "Planejado",
@@ -46,16 +47,16 @@ export function ConteudoPreviewCard({ conteudo }: { conteudo: Conteudo }) {
         </span>
       </div>
 
-      <div className="flex aspect-square flex-col items-center justify-center gap-2 bg-gradient-to-br from-surface to-black/40 px-4 text-center">
-        <Icone size={32} className="text-gray-500" />
-        {promptVisual ? (
+      {promptVisual ? (
+        <div className="flex aspect-square flex-col items-center justify-center gap-2 bg-gradient-to-br from-surface to-black/40 px-4 text-center">
+          <Icone size={32} className="text-gray-500" />
           <p className="line-clamp-4 text-[11px] italic text-gray-400">
             Prévia do prompt visual: &quot;{promptVisual}&quot;
           </p>
-        ) : (
-          <p className="text-[11px] text-gray-600">Mídia real chega na Fase 3</p>
-        )}
-      </div>
+        </div>
+      ) : (
+        <PublicarInstagramPanel conteudo={conteudo} />
+      )}
 
       <div className="flex flex-col gap-2 p-3">
         <p className="whitespace-pre-line text-sm text-gray-200">{conteudo.texto ?? "—"}</p>

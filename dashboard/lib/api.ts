@@ -2,12 +2,23 @@ function resolverApiUrl(): string {
   if (typeof window === "undefined") {
     // Server Components rodam no processo Node do container e não podem usar
     // URL relativa (o navegador resolve "/api/..." contra a própria origem, o Node não).
-    return process.env.INTERNAL_API_URL || "http://localhost:4000";
+    return process.env.INTERNAL_API_URL ?? "http://localhost:4000";
   }
-  return process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+  // "" é um valor válido e intencional (caminho relativo, mesma origem do navegador) —
+  // usar ?? em vez de || pra não cair no fallback quando NEXT_PUBLIC_API_URL for string vazia.
+  return process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 }
 
 export const API_URL = resolverApiUrl();
+
+// NEXT_PUBLIC_API_URL é inlineado no build tanto no bundle do servidor quanto no do cliente
+// com o mesmo valor literal — diferente de API_URL (que no servidor aponta pra rede interna
+// do Docker), isso sempre resolve pra uma URL alcançável pelo navegador. Usar em qualquer
+// <img src>/link montado a partir de um caminho relativo vindo da API (logos, mídia etc.).
+export function urlPublica(caminho: string): string {
+  const base = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+  return `${base}${caminho}`;
+}
 
 export type ContaSocial = {
   id: string;
@@ -69,7 +80,7 @@ export type Conteudo = {
     status: string;
     empresa: { nome: string; logoUrl: string | null };
   };
-  publicacoes: { id: string; rede: string; status: string }[];
+  publicacoes: { id: string; rede: string; status: string; externalPostId: string | null }[];
 };
 
 export type Publicacao = {
@@ -188,6 +199,15 @@ export function atualizarEmpresa(id: string, dados: Partial<EmpresaInput>) {
   return patchJson(`/api/empresas/${id}`, dados);
 }
 
+export async function excluirEmpresa(id: string): Promise<{ ok: boolean }> {
+  try {
+    const res = await fetch(`${API_URL}/api/empresas/${id}`, { method: "DELETE" });
+    return { ok: res.ok };
+  } catch {
+    return { ok: false };
+  }
+}
+
 export async function enviarLogoEmpresa(
   id: string,
   arquivo: File,
@@ -257,4 +277,40 @@ export function getAgenteTimeline(nome: string) {
 
 export function getAgentesStatus() {
   return safeFetch<StatusAtivo[]>("/api/agentes/status", []);
+}
+
+export function urlOauthInstagram(contaSocialId: string): string {
+  return urlPublica(`/api/oauth/instagram/iniciar/${contaSocialId}`);
+}
+
+export async function enviarMidiaConteudo(
+  id: string,
+  arquivo: File,
+): Promise<{ ok: boolean; erro?: string }> {
+  try {
+    const form = new FormData();
+    form.append("midia", arquivo);
+    const res = await fetch(`${API_URL}/api/conteudos/${id}/midia`, { method: "POST", body: form });
+    if (!res.ok) return { ok: false, erro: "Não foi possível enviar a imagem." };
+    return { ok: true };
+  } catch {
+    return { ok: false, erro: "Falha de conexão com o backend." };
+  }
+}
+
+export async function publicarConteudo(id: string): Promise<{ ok: boolean; erro?: string }> {
+  try {
+    // A rota de publicar é a única protegida por Basic Auth no nginx (é a única ação
+    // irreversível fora do AgentOS) — o valor já vem em base64 "usuario:senha" via env var.
+    const auth = process.env.NEXT_PUBLIC_PUBLICAR_BASIC;
+    const res = await fetch(`${API_URL}/api/conteudos/${id}/publicar`, {
+      method: "POST",
+      headers: auth ? { Authorization: `Basic ${auth}` } : undefined,
+    });
+    const corpo = await res.json().catch(() => null);
+    if (!res.ok) return { ok: false, erro: corpo?.error ?? "Não foi possível publicar." };
+    return { ok: true };
+  } catch {
+    return { ok: false, erro: "Falha de conexão com o backend." };
+  }
 }

@@ -7,6 +7,7 @@ import {
   atualizarContaSocial,
   criarContaSocial,
   excluirContaSocial,
+  urlOauthInstagram,
   type ContaSocial,
 } from "@/lib/api";
 
@@ -27,6 +28,31 @@ type Par = { chave: string; valor: string };
 function rotuloConta(conta: ContaSocial) {
   if (conta.rede === "outro" && conta.rotuloCustom) return conta.rotuloCustom;
   return REDE_LABEL[conta.rede] ?? conta.rede;
+}
+
+function StatusInstagram({ conta }: { conta: ContaSocial }) {
+  const credenciais = conta.credenciais ?? {};
+
+  if (credenciais.ig_user_id) {
+    return (
+      <p className="truncate text-[11px] text-emerald-400">
+        ● Conectado{credenciais.ig_username ? ` como @${credenciais.ig_username}` : ""}
+      </p>
+    );
+  }
+
+  if (credenciais.meta_app_id) {
+    return (
+      <a
+        href={urlOauthInstagram(conta.id)}
+        className="text-[11px] text-blue-400 hover:text-blue-300 hover:underline"
+      >
+        Conectar com Facebook →
+      </a>
+    );
+  }
+
+  return <p className="truncate text-[11px] text-gray-500">Preencha o App ID/Secret da Meta pra conectar</p>;
 }
 
 function MiniForm({
@@ -219,13 +245,17 @@ export function ContaSocialManager({
             >
               <div className="min-w-0">
                 <p className="truncate text-xs font-medium text-white">{rotuloConta(conta)}</p>
-                <p className="truncate text-[11px] text-gray-500">
-                  {conta.credenciais && Object.keys(conta.credenciais).length > 0
-                    ? Object.entries(conta.credenciais)
-                        .map(([k, v]) => `${k}: ${v}`)
-                        .join(" · ")
-                    : "sem credenciais"}
-                </p>
+                {conta.rede === "instagram" ? (
+                  <StatusInstagram conta={conta} />
+                ) : (
+                  <p className="truncate text-[11px] text-gray-500">
+                    {conta.credenciais && Object.keys(conta.credenciais).length > 0
+                      ? Object.entries(conta.credenciais)
+                          .map(([k, v]) => `${k}: ${v}`)
+                          .join(" · ")
+                      : "sem credenciais"}
+                  </p>
+                )}
               </div>
               <div className="flex shrink-0 items-center gap-1">
                 <button

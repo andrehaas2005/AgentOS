@@ -46,6 +46,12 @@ export type CalendarioItem = {
   briefing: string | null;
   status: string;
   empresa: { nome: string; logoUrl: string | null };
+  conteudos?: {
+    id: string;
+    texto: string | null;
+    metadata?: ConteudoMetadata | null;
+    publicacoes: { rede: string; status: string; externalPostId: string | null; log: string | null }[];
+  }[];
 };
 
 export type ExecucaoAgente = {
@@ -270,6 +276,14 @@ export async function criarCalendarioItem(
   dados: CalendarioItemInput,
 ): Promise<{ ok: boolean; erro?: string }> {
   const resultado = await postJson("/api/calendario", dados);
+  return { ok: resultado.ok, erro: resultado.erro };
+}
+
+export async function atualizarCalendarioItem(
+  id: string,
+  dados: Partial<Omit<CalendarioItemInput, "empresaId">>,
+): Promise<{ ok: boolean; erro?: string }> {
+  const resultado = await patchJson(`/api/calendario/${id}`, dados);
   return { ok: resultado.ok, erro: resultado.erro };
 }
 

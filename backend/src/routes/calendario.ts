@@ -30,7 +30,10 @@ calendarioRouter.get("/", async (req, res) => {
       empresaId: empresaId ? String(empresaId) : undefined,
       status: status ? (String(status) as StatusCalendario) : undefined,
     },
-    include: { empresa: true },
+    include: {
+      empresa: true,
+      conteudos: { include: { publicacoes: true }, orderBy: { createdAt: "desc" }, take: 1 },
+    },
     orderBy: { dataHora: "asc" },
   });
   res.json(itens);
@@ -42,6 +45,15 @@ calendarioRouter.post("/", async (req, res) => {
 
   const item = await prisma.calendarioItem.create({ data: parsed.data });
   res.status(201).json(item);
+});
+
+calendarioRouter.patch("/:id", async (req, res) => {
+  const parsed = calendarioInput.omit({ empresaId: true }).partial().safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+
+  const item = await prisma.calendarioItem.update({ where: { id: req.params.id }, data: parsed.data }).catch(() => null);
+  if (!item) return res.status(404).json({ error: "Item de calendário não encontrado" });
+  res.json(item);
 });
 
 calendarioRouter.post("/:id/executar", async (req, res) => {

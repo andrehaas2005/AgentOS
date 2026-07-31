@@ -11,6 +11,7 @@ import { agentesRouter } from "./routes/agentes";
 import { contasSociaisRouter } from "./routes/contasSociais";
 import { oauthInstagramRouter } from "./routes/oauthInstagram";
 import { oauthLinkedinRouter } from "./routes/oauthLinkedin";
+import { frasesRouter } from "./routes/frases";
 import { iniciarRenovacaoAutomaticaDeTokens } from "./lib/renovarTokens";
 import { iniciarAgendadorExecucao } from "./lib/agendadorExecucao";
 
@@ -31,6 +32,7 @@ app.use("/api/agentes", agentesRouter);
 app.use("/api/contas-sociais", contasSociaisRouter);
 app.use("/api/oauth/instagram", oauthInstagramRouter);
 app.use("/api/oauth/linkedin", oauthLinkedinRouter);
+app.use("/api/frases", frasesRouter);
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 4000;
 app.listen(PORT, () => {

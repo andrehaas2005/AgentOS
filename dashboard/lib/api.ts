@@ -131,6 +131,13 @@ export type StatusAtivo = {
   descricao: string | null;
 };
 
+export type FraseOciosa = {
+  id: string;
+  texto: string;
+  agentes: string[];
+  createdAt: string;
+};
+
 export type AgenteStats = {
   agente: string;
   totalExecucoes: number;
@@ -356,6 +363,36 @@ export function getAgenteTimeline(nome: string) {
 
 export function getAgentesStatus() {
   return safeFetch<StatusAtivo[]>("/api/agentes/status", []);
+}
+
+export function getFrasesOciosas() {
+  return safeFetch<FraseOciosa[]>("/api/frases", []);
+}
+
+export async function criarFraseOciosa(
+  texto: string,
+  agentes: string[],
+): Promise<{ ok: boolean; erro?: string }> {
+  const resultado = await postJson("/api/frases", { texto, agentes });
+  return { ok: resultado.ok, erro: resultado.erro };
+}
+
+export async function atualizarFraseOciosa(
+  id: string,
+  dados: { texto?: string; agentes?: string[] },
+): Promise<{ ok: boolean; erro?: string }> {
+  const resultado = await patchJson(`/api/frases/${id}`, dados);
+  return { ok: resultado.ok, erro: resultado.erro };
+}
+
+export async function excluirFraseOciosa(id: string): Promise<{ ok: boolean; erro?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/api/frases/${id}`, { method: "DELETE" });
+    if (!res.ok) return { ok: false, erro: "Não foi possível excluir." };
+    return { ok: true };
+  } catch {
+    return { ok: false, erro: "Falha de conexão com o backend." };
+  }
 }
 
 export function urlOauthInstagram(contaSocialId: string): string {

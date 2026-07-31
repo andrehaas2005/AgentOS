@@ -2,8 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AGENTES, SPRITE_POR_AGENTE } from "@/lib/agentes";
-import { fraseAleatoria } from "@/lib/frasesCopa";
-import { getAgentesStatus, type StatusAtivo } from "@/lib/api";
+import { getAgentesStatus, getFrasesOciosas, type StatusAtivo, type FraseOciosa } from "@/lib/api";
 import { PersonagemCena } from "./PersonagemCena";
 import { PainelAgente } from "./PainelAgente";
 
@@ -31,6 +30,12 @@ const LIMITES_COPA = { xMin: 58, xMax: 97, yMin: 22, yMax: 92 };
 // deslocamento físico que espera esse tempo.
 const AGUARDAR_ANTES_DE_SAIR_MS = 60000;
 
+function fraseAleatoriaPara(nomeAgente: string, frases: FraseOciosa[]): string | undefined {
+  const elegiveis = frases.filter((f) => f.agentes.length === 0 || f.agentes.includes(nomeAgente));
+  if (elegiveis.length === 0) return undefined;
+  return elegiveis[Math.floor(Math.random() * elegiveis.length)].texto;
+}
+
 function pontoProximo(base: { x: number; y: number }): { x: number; y: number } {
   const x = base.x + (Math.random() * 16 - 8);
   const y = base.y + (Math.random() * 20 - 10);
@@ -44,6 +49,7 @@ type Fala = { texto: string; expira: number };
 
 export function EscritorioAgentes() {
   const [ativos, setAtivos] = useState<StatusAtivo[]>([]);
+  const [frases, setFrases] = useState<FraseOciosa[]>([]);
   const [falasOciosos, setFalasOciosos] = useState<Record<string, Fala>>({});
   const [selecionado, setSelecionado] = useState<string | null>(null);
   const [passeioOcioso, setPasseioOcioso] = useState<Record<string, { x: number; y: number }>>({});
@@ -63,6 +69,20 @@ export function EscritorioAgentes() {
     };
   }, []);
 
+  useEffect(() => {
+    let cancelado = false;
+    async function buscar() {
+      const dados = await getFrasesOciosas();
+      if (!cancelado) setFrases(dados);
+    }
+    buscar();
+    const id = setInterval(buscar, 60000);
+    return () => {
+      cancelado = true;
+      clearInterval(id);
+    };
+  }, []);
+
   const ativoPorNome = new Map(ativos.map((ativo) => [ativo.agente, ativo]));
 
   // Ref pra o intervalo de passeio (6s) ler sempre quem está ativo agora sem
@@ -71,6 +91,9 @@ export function EscritorioAgentes() {
   // dependesse de `ativos` diretamente no array de dependências do efeito.
   const ativoPorNomeRef = useRef(ativoPorNome);
   ativoPorNomeRef.current = ativoPorNome;
+
+  const frasesRef = useRef(frases);
+  frasesRef.current = frases;
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -85,7 +108,8 @@ export function EscritorioAgentes() {
         );
         if (ociosos.length > 0 && Object.keys(proximo).length < 2 && Math.random() < 0.5) {
           const nome = ociosos[Math.floor(Math.random() * ociosos.length)];
-          proximo[nome] = { texto: fraseAleatoria(), expira: agora + 4500 };
+          const texto = fraseAleatoriaPara(nome, frasesRef.current);
+          if (texto) proximo[nome] = { texto, expira: agora + 4500 };
         }
         return proximo;
       });

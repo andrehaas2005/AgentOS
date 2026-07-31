@@ -1,5 +1,6 @@
 import { Sidebar } from "@/components/Sidebar";
 import { SelectFiltroEmpresa } from "@/components/SelectFiltroEmpresa";
+import { FrasesOciosasManager } from "@/components/FrasesOciosasManager";
 import { getAgentesStats, getEmpresas } from "@/lib/api";
 import { AGENTES } from "@/lib/agentes";
 
@@ -46,6 +47,10 @@ export default async function AgentesPage({
               </div>
             );
           })}
+        </div>
+
+        <div className="mt-6">
+          <FrasesOciosasManager />
         </div>
       </main>
     </div>

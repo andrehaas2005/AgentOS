@@ -113,6 +113,15 @@ model Publicacao {
   @@map("publicacoes")
 }
 
+model FraseOciosa {
+  id        String   @id @default(uuid())
+  texto     String
+  agentes   String[] @default([])
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("frases_ociosas")
+}
+
 model ExecucaoAgente {
   id          String   @id @default(uuid())
   agente      String

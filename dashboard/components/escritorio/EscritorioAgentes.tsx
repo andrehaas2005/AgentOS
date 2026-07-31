@@ -22,12 +22,26 @@ const POSICOES: Record<string, { copa: { x: number; y: number }; mesa: { x: numb
 
 const DESKS = Object.values(POSICOES).map((pos) => pos.mesa);
 
+// Limites da copa (sala da direita) — evita que o passeio ocioso jogue o
+// personagem pra cima da parede ou da sala de trabalho.
+const LIMITES_COPA = { xMin: 58, xMax: 97, yMin: 22, yMax: 92 };
+
+function pontoProximo(base: { x: number; y: number }): { x: number; y: number } {
+  const x = base.x + (Math.random() * 16 - 8);
+  const y = base.y + (Math.random() * 20 - 10);
+  return {
+    x: Math.min(LIMITES_COPA.xMax, Math.max(LIMITES_COPA.xMin, x)),
+    y: Math.min(LIMITES_COPA.yMax, Math.max(LIMITES_COPA.yMin, y)),
+  };
+}
+
 type Fala = { texto: string; expira: number };
 
 export function EscritorioAgentes() {
   const [ativos, setAtivos] = useState<StatusAtivo[]>([]);
   const [falasOciosos, setFalasOciosos] = useState<Record<string, Fala>>({});
   const [selecionado, setSelecionado] = useState<string | null>(null);
+  const [passeioOcioso, setPasseioOcioso] = useState<Record<string, { x: number; y: number }>>({});
 
   useEffect(() => {
     let cancelado = false;
@@ -63,6 +77,32 @@ export function EscritorioAgentes() {
         return proximo;
       });
     }, 2200);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ativos]);
+
+  // A cada rodada, cada agente ocioso tem uma chance de "passear" pra um ponto
+  // aleatório próximo dentro da copa — evita a cena parecer estática demais.
+  // Volta pro assento oficial assim que entra em atividade (removido do estado).
+  useEffect(() => {
+    const id = setInterval(() => {
+      setPasseioOcioso((prev) => {
+        const proximo = { ...prev };
+        for (const agente of AGENTES) {
+          const nome = agente.nome;
+          const pos = POSICOES[nome];
+          if (!pos) continue;
+          if (ativoPorNome.has(nome)) {
+            delete proximo[nome];
+            continue;
+          }
+          if (Math.random() < 0.4) {
+            proximo[nome] = pontoProximo(pos.copa);
+          }
+        }
+        return proximo;
+      });
+    }, 6000);
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ativos]);
@@ -245,7 +285,7 @@ export function EscritorioAgentes() {
         const ativo = ativoPorNome.get(agente.nome);
         const pos = POSICOES[agente.nome];
         if (!pos) return null;
-        const alvo = ativo ? pos.mesa : pos.copa;
+        const alvo = ativo ? pos.mesa : (passeioOcioso[agente.nome] ?? pos.copa);
 
         return (
           <PersonagemCena

@@ -15,7 +15,7 @@ export function PersonagemCena({ nome, sprite, x, y, ativo, fala, onClick }: Pro
     <button
       type="button"
       onClick={onClick}
-      className="absolute z-20 w-9 -translate-x-1/2 cursor-pointer border-0 bg-transparent p-0"
+      className="absolute z-20 w-9 -translate-x-1/2 cursor-pointer border-0 bg-transparent p-0 transition-[left,top] duration-[1800ms] ease-in-out"
       style={{ left: `${x}%`, top: `${y}%` }}
     >
       <div

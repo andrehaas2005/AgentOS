@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { StatusCalendario } from "@prisma/client";
 import { prisma } from "../db";
 import { executarAgenteCeo } from "../agentes/ceo";
+import { atualizarStatusAposPublicacao } from "../lib/aprovacao";
 
 export const calendarioRouter = Router();
 
@@ -71,6 +72,16 @@ calendarioRouter.delete("/:id", async (req, res) => {
 
   await prisma.calendarioItem.delete({ where: { id: req.params.id } });
   res.status(204).send();
+});
+
+// Recalcula o status a partir das publicações reais — corrige itens cujo status ficou
+// desatualizado (ex: publicados por um caminho de código antigo que não sincronizava
+// o status do agendamento de volta).
+calendarioRouter.post("/:id/recalcular-status", async (req, res) => {
+  await atualizarStatusAposPublicacao(req.params.id);
+  const item = await prisma.calendarioItem.findUnique({ where: { id: req.params.id } });
+  if (!item) return res.status(404).json({ error: "Item de calendário não encontrado" });
+  res.json(item);
 });
 
 calendarioRouter.post("/:id/executar", async (req, res) => {

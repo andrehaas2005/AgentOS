@@ -25,6 +25,7 @@ services:
       PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost}
       META_GRAPH_VERSION: ${META_GRAPH_VERSION:-v24.0}
       OAUTH_STATE_SECRET: ${OAUTH_STATE_SECRET:-troque-este-segredo}
+      LINKEDIN_API_VERSION: ${LINKEDIN_API_VERSION:-202401}
     volumes:
       - uploads:/app/uploads
     depends_on:

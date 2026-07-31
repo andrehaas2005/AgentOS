@@ -10,6 +10,7 @@ import { publicacoesRouter } from "./routes/publicacoes";
 import { agentesRouter } from "./routes/agentes";
 import { contasSociaisRouter } from "./routes/contasSociais";
 import { oauthInstagramRouter } from "./routes/oauthInstagram";
+import { oauthLinkedinRouter } from "./routes/oauthLinkedin";
 
 const app = express();
 
@@ -27,6 +28,7 @@ app.use("/api/publicacoes", publicacoesRouter);
 app.use("/api/agentes", agentesRouter);
 app.use("/api/contas-sociais", contasSociaisRouter);
 app.use("/api/oauth/instagram", oauthInstagramRouter);
+app.use("/api/oauth/linkedin", oauthLinkedinRouter);
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 4000;
 app.listen(PORT, () => {

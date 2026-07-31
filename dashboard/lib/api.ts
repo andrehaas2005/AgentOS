@@ -283,6 +283,10 @@ export function urlOauthInstagram(contaSocialId: string): string {
   return urlPublica(`/api/oauth/instagram/iniciar/${contaSocialId}`);
 }
 
+export function urlOauthLinkedin(contaSocialId: string): string {
+  return urlPublica(`/api/oauth/linkedin/iniciar/${contaSocialId}`);
+}
+
 export async function enviarMidiaConteudo(
   id: string,
   arquivo: File,
@@ -304,6 +308,21 @@ export async function publicarConteudo(id: string): Promise<{ ok: boolean; erro?
     // irreversível fora do AgentOS) — o valor já vem em base64 "usuario:senha" via env var.
     const auth = process.env.NEXT_PUBLIC_PUBLICAR_BASIC;
     const res = await fetch(`${API_URL}/api/conteudos/${id}/publicar`, {
+      method: "POST",
+      headers: auth ? { Authorization: `Basic ${auth}` } : undefined,
+    });
+    const corpo = await res.json().catch(() => null);
+    if (!res.ok) return { ok: false, erro: corpo?.error ?? "Não foi possível publicar." };
+    return { ok: true };
+  } catch {
+    return { ok: false, erro: "Falha de conexão com o backend." };
+  }
+}
+
+export async function publicarConteudoLinkedin(id: string): Promise<{ ok: boolean; erro?: string }> {
+  try {
+    const auth = process.env.NEXT_PUBLIC_PUBLICAR_BASIC;
+    const res = await fetch(`${API_URL}/api/conteudos/${id}/publicar-linkedin`, {
       method: "POST",
       headers: auth ? { Authorization: `Basic ${auth}` } : undefined,
     });

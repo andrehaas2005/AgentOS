@@ -8,6 +8,7 @@ import {
   criarContaSocial,
   excluirContaSocial,
   urlOauthInstagram,
+  urlOauthLinkedin,
   type ContaSocial,
 } from "@/lib/api";
 
@@ -53,6 +54,31 @@ function StatusInstagram({ conta }: { conta: ContaSocial }) {
   }
 
   return <p className="truncate text-[11px] text-gray-500">Preencha o App ID/Secret da Meta pra conectar</p>;
+}
+
+function StatusLinkedin({ conta }: { conta: ContaSocial }) {
+  const credenciais = conta.credenciais ?? {};
+
+  if (credenciais.linkedin_sub) {
+    return (
+      <p className="truncate text-[11px] text-emerald-400">
+        ● Conectado{credenciais.linkedin_nome ? ` como ${credenciais.linkedin_nome}` : ""}
+      </p>
+    );
+  }
+
+  if (credenciais.linkedin_client_id) {
+    return (
+      <a
+        href={urlOauthLinkedin(conta.id)}
+        className="text-[11px] text-blue-400 hover:text-blue-300 hover:underline"
+      >
+        Conectar com LinkedIn →
+      </a>
+    );
+  }
+
+  return <p className="truncate text-[11px] text-gray-500">Preencha o Client ID/Secret do LinkedIn pra conectar</p>;
 }
 
 function MiniForm({
@@ -247,6 +273,8 @@ export function ContaSocialManager({
                 <p className="truncate text-xs font-medium text-white">{rotuloConta(conta)}</p>
                 {conta.rede === "instagram" ? (
                   <StatusInstagram conta={conta} />
+                ) : conta.rede === "linkedin" ? (
+                  <StatusLinkedin conta={conta} />
                 ) : (
                   <p className="truncate text-[11px] text-gray-500">
                     {conta.credenciais && Object.keys(conta.credenciais).length > 0

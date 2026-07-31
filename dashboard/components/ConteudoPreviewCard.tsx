@@ -2,6 +2,7 @@ import { Image as ImageIcon, GalleryHorizontal, Sparkles, Video, Clapperboard, F
 import type { Conteudo } from "@/lib/api";
 import { EmpresaAvatar } from "./EmpresaAvatar";
 import { PublicarInstagramPanel } from "./PublicarInstagramPanel";
+import { PublicarLinkedinPanel } from "./PublicarLinkedinPanel";
 
 const STATUS_LABEL: Record<string, string> = {
   planejado: "Planejado",
@@ -55,7 +56,10 @@ export function ConteudoPreviewCard({ conteudo }: { conteudo: Conteudo }) {
           </p>
         </div>
       ) : (
-        <PublicarInstagramPanel conteudo={conteudo} />
+        <>
+          <PublicarInstagramPanel conteudo={conteudo} />
+          <PublicarLinkedinPanel conteudo={conteudo} />
+        </>
       )}
 
       <div className="flex flex-col gap-2 p-3">

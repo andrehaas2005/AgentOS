@@ -5,6 +5,7 @@ import path from "path";
 import fs from "fs";
 import { prisma } from "../db";
 import { publicarConteudoNoInstagram, PublicacaoInstagramError } from "../lib/publicarInstagram";
+import { publicarConteudoNoLinkedin, PublicacaoLinkedinError } from "../lib/publicarLinkedin";
 
 export const conteudosRouter = Router();
 
@@ -54,6 +55,19 @@ conteudosRouter.post("/:id/publicar", async (req, res) => {
     res.status(201).json(publicacao);
   } catch (erro) {
     if (erro instanceof PublicacaoInstagramError) {
+      const status = erro.tipo === "duplicado" ? 409 : 400;
+      return res.status(status).json({ error: erro.message });
+    }
+    res.status(500).json({ error: "Erro inesperado ao publicar." });
+  }
+});
+
+conteudosRouter.post("/:id/publicar-linkedin", async (req, res) => {
+  try {
+    const publicacao = await publicarConteudoNoLinkedin(req.params.id);
+    res.status(201).json(publicacao);
+  } catch (erro) {
+    if (erro instanceof PublicacaoLinkedinError) {
       const status = erro.tipo === "duplicado" ? 409 : 400;
       return res.status(status).json({ error: erro.message });
     }

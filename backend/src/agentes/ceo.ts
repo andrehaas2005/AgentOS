@@ -135,6 +135,9 @@ export async function executarAgenteCeo(calendarioItemId: string) {
             existente.fimMs = Date.now();
           } else {
             const nomeExibicao = NOMES_EXIBICAO[assistente.subagent_type ?? ""] ?? assistente.subagent_type;
+            console.log(
+              `[DEBUG board] subagente detectado subagent_type=${assistente.subagent_type} nomeExibicao=${nomeExibicao} parent_tool_use_id=${chave}`,
+            );
             subExecucoes.set(chave, {
               subagentType: assistente.subagent_type ?? "desconhecido",
               descricao: assistente.task_description,
@@ -142,7 +145,11 @@ export async function executarAgenteCeo(calendarioItemId: string) {
               fimMs: Date.now(),
               saida: texto,
             });
-            if (nomeExibicao) marcarAtivo(nomeExibicao, assistente.task_description);
+            if (nomeExibicao) {
+              marcarAtivo(nomeExibicao, assistente.task_description);
+            } else {
+              console.log(`[DEBUG board] nomeExibicao vazio, marcarAtivo NÃO chamado`);
+            }
           }
         }
       }

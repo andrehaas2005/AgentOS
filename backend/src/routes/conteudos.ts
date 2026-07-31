@@ -6,6 +6,7 @@ import fs from "fs";
 import { prisma } from "../db";
 import { publicarConteudoNoInstagram, PublicacaoInstagramError } from "../lib/publicarInstagram";
 import { publicarConteudoNoLinkedin, PublicacaoLinkedinError } from "../lib/publicarLinkedin";
+import { aprovarEPublicarConteudo } from "../lib/aprovacao";
 
 export const conteudosRouter = Router();
 
@@ -32,7 +33,10 @@ conteudosRouter.get("/", async (req, res) => {
         tipoPost: tipoPost ? (String(tipoPost) as TipoPost) : undefined,
       },
     },
-    include: { calendario: { include: { empresa: true } }, publicacoes: true },
+    include: {
+      calendario: { include: { empresa: { include: { contasSociais: true } } } },
+      publicacoes: true,
+    },
     orderBy: { createdAt: "desc" },
   });
   res.json(conteudos);
@@ -70,6 +74,19 @@ conteudosRouter.post("/:id/publicar", async (req, res) => {
       return res.status(status).json({ error: erro.message });
     }
     res.status(500).json({ error: "Erro inesperado ao publicar." });
+  }
+});
+
+conteudosRouter.post("/:id/aprovar", async (req, res) => {
+  const { aprovadoPor } = req.body as { aprovadoPor?: unknown };
+  if (typeof aprovadoPor !== "string" || !aprovadoPor.trim()) {
+    return res.status(400).json({ error: "Informe quem está aprovando." });
+  }
+  try {
+    const resultados = await aprovarEPublicarConteudo(req.params.id, aprovadoPor.trim());
+    res.status(200).json({ resultados });
+  } catch (erro) {
+    res.status(500).json({ error: erro instanceof Error ? erro.message : "Erro inesperado ao aprovar." });
   }
 });
 

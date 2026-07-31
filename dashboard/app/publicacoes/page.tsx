@@ -1,14 +1,8 @@
 import { Sidebar } from "@/components/Sidebar";
 import { SelectFiltro } from "@/components/SelectFiltro";
 import { SelectFiltroEmpresa } from "@/components/SelectFiltroEmpresa";
-import { EmpresaAvatar } from "@/components/EmpresaAvatar";
+import { PublicacaoLinha } from "@/components/PublicacaoDetalheModal";
 import { getPublicacoes, getEmpresas } from "@/lib/api";
-
-const STATUS_LABEL: Record<string, string> = {
-  pendente: "Pendente",
-  publicado: "Publicado",
-  erro: "Erro",
-};
 
 const REDE_OPCOES = [
   { value: "instagram", label: "Instagram" },
@@ -62,27 +56,7 @@ export default async function PublicacoesPage({
               </thead>
               <tbody>
                 {publicacoes.map((publicacao) => (
-                  <tr key={publicacao.id} className="border-t border-border bg-surface">
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      {new Date(publicacao.createdAt).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <EmpresaAvatar
-                          nome={publicacao.conteudo.calendario.empresa.nome}
-                          logoUrl={publicacao.conteudo.calendario.empresa.logoUrl}
-                          size={20}
-                        />
-                        {publicacao.conteudo.calendario.empresa.nome}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">{publicacao.rede}</td>
-                    <td className="px-4 py-3">{STATUS_LABEL[publicacao.status] ?? publicacao.status}</td>
-                    <td className="px-4 py-3 text-gray-500">{publicacao.externalPostId ?? "—"}</td>
-                    <td className="max-w-xs truncate px-4 py-3 text-gray-500" title={publicacao.log ?? undefined}>
-                      {publicacao.log ?? "—"}
-                    </td>
-                  </tr>
+                  <PublicacaoLinha key={publicacao.id} publicacao={publicacao} />
                 ))}
               </tbody>
             </table>

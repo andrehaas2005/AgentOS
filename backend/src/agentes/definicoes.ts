@@ -52,6 +52,7 @@ Responda em português. Você NÃO gera o vídeo — apenas o roteiro/descriçã
 Dado o conteúdo final produzido (legenda, hashtags, CTA e prompt de imagem/roteiro de vídeo, quando existirem) e as guidelines de marca da empresa, valide se o conteúdo está alinhado.
 Responda começando com "APROVADO" seguido de uma linha de justificativa, OU "AJUSTAR:" seguido do que precisa mudar.`,
     tools: [],
-    model: "sonnet",
+    // Tarefa de validação (não criativa) que roda em 100% dos posts — Haiku é suficiente e reduz custo.
+    model: "haiku",
   },
 };

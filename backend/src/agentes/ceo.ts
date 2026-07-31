@@ -42,12 +42,15 @@ function extrairTexto(content: unknown): string {
     .join("");
 }
 
-function montarPromptCeo(item: {
-  tipoPost: string;
-  dataHora: Date;
-  briefing: string | null;
-  empresa: { nome: string; nicho: string | null; tomDeVoz: string | null; brandGuidelines: unknown };
-}): string {
+function montarPromptCeo(
+  item: {
+    tipoPost: string;
+    dataHora: Date;
+    briefing: string | null;
+    empresa: { nome: string; nicho: string | null; tomDeVoz: string | null; brandGuidelines: unknown };
+  },
+  reforcarDelegacao = false,
+): string {
   const precisaArte = TIPOS_QUE_PRECISAM_ARTE.has(item.tipoPost);
   const precisaVideo = TIPOS_QUE_PRECISAM_VIDEO.has(item.tipoPost);
 
@@ -60,8 +63,12 @@ function montarPromptCeo(item: {
       : null,
   ].filter(Boolean);
 
-  return `Você é o Agente CEO do AgentOS, responsável por orquestrar a produção do conteúdo de um post.
+  const aviso = reforcarDelegacao
+    ? `\n\nATENÇÃO — TENTATIVA ANTERIOR REJEITADA: você respondeu diretamente sem usar a ferramenta Task para delegar aos subagentes. Isso é PROIBIDO, mesmo que o post pareça simples. Você é apenas o orquestrador — não escreva ângulo, legenda, hashtags, prompt de imagem/roteiro ou revisão você mesmo. Use a ferramenta Task para acionar CADA subagente listado abaixo, um por um, antes de responder o JSON final.\n`
+    : "";
 
+  return `Você é o Agente CEO do AgentOS, responsável por orquestrar a produção do conteúdo de um post.
+${aviso}
 Empresa: ${item.empresa.nome}
 Nicho: ${item.empresa.nicho ?? "não informado"}
 Tom de voz: ${item.empresa.tomDeVoz ?? "não informado"}
@@ -72,28 +79,33 @@ Tipo de post: ${item.tipoPost}
 Data/hora planejada: ${item.dataHora.toISOString()}
 Briefing: ${item.briefing ?? "nenhum briefing específico — use o nicho da empresa como base"}
 
-Fluxo obrigatório:
+Fluxo obrigatório (use a ferramenta Task para cada um destes passos, nunca responda diretamente):
 1. Delegue ao subagente "estrategista-conteudo" para definir o ângulo do post.
 2. Delegue ao subagente "redator" para escrever a legenda, hashtags e CTA com base no ângulo.
 ${passosMidia.join("\n")}
 ${passosMidia.length + 3}. Delegue ao subagente "revisor-marca" para revisar o conteúdo final contra as guidelines.
-${passosMidia.length + 4}. Responda no formato JSON pedido, consolidando tudo que os subagentes produziram.
+${passosMidia.length + 4}. Só então responda no formato JSON pedido, consolidando tudo que os subagentes produziram.
 
 Não publique nada e não gere mídia de verdade — apenas texto/JSON.`;
 }
 
-export async function executarAgenteCeo(calendarioItemId: string) {
-  const item = await prisma.calendarioItem.findUnique({
-    where: { id: calendarioItemId },
-    include: { empresa: true },
-  });
-  if (!item) throw new Error("Item de calendário não encontrado");
+type TentativaCeo = {
+  subExecucoes: Map<string, SubExecucao>;
+  resultadoFinal: SDKResultMessage | undefined;
+  duracaoMs: number;
+};
 
+async function rodarTentativaCeo(
+  item: Awaited<ReturnType<typeof prisma.calendarioItem.findUnique>> & {
+    empresa: { nome: string; nicho: string | null; tomDeVoz: string | null; brandGuidelines: unknown };
+  },
+  reforcarDelegacao: boolean,
+): Promise<TentativaCeo> {
   const { query } = await import("@anthropic-ai/claude-agent-sdk");
 
   const options: Options = {
     systemPrompt:
-      "Você é o Agente CEO: orquestra os subagentes especializados para produzir o conteúdo de um post de rede social. Sempre delegue cada etapa ao subagente certo — nunca escreva o conteúdo final você mesmo.",
+      "Você é o Agente CEO: orquestra os subagentes especializados para produzir o conteúdo de um post de rede social. Sempre delegue cada etapa ao subagente certo, usando a ferramenta Task — nunca escreva o conteúdo final você mesmo.",
     tools: ["Task"],
     allowedTools: ["Task"],
     permissionMode: "dontAsk",
@@ -123,7 +135,7 @@ export async function executarAgenteCeo(calendarioItemId: string) {
 
   marcarAtivo("CEO", `Executando ${item.tipoPost}`);
   try {
-    for await (const message of query({ prompt: montarPromptCeo(item), options })) {
+    for await (const message of query({ prompt: montarPromptCeo(item, reforcarDelegacao), options })) {
       if (message.type === "assistant") {
         const assistente = message as SDKAssistantMessage;
         if (assistente.parent_tool_use_id) {
@@ -135,9 +147,6 @@ export async function executarAgenteCeo(calendarioItemId: string) {
             existente.fimMs = Date.now();
           } else {
             const nomeExibicao = NOMES_EXIBICAO[assistente.subagent_type ?? ""] ?? assistente.subagent_type;
-            console.log(
-              `[DEBUG board] subagente detectado subagent_type=${assistente.subagent_type} nomeExibicao=${nomeExibicao} parent_tool_use_id=${chave}`,
-            );
             subExecucoes.set(chave, {
               subagentType: assistente.subagent_type ?? "desconhecido",
               descricao: assistente.task_description,
@@ -145,11 +154,7 @@ export async function executarAgenteCeo(calendarioItemId: string) {
               fimMs: Date.now(),
               saida: texto,
             });
-            if (nomeExibicao) {
-              marcarAtivo(nomeExibicao, assistente.task_description);
-            } else {
-              console.log(`[DEBUG board] nomeExibicao vazio, marcarAtivo NÃO chamado`);
-            }
+            if (nomeExibicao) marcarAtivo(nomeExibicao, assistente.task_description);
           }
         }
       }
@@ -164,6 +169,30 @@ export async function executarAgenteCeo(calendarioItemId: string) {
     }
   }
 
+  return { subExecucoes, resultadoFinal, duracaoMs: Date.now() - inicioGeral };
+}
+
+export async function executarAgenteCeo(calendarioItemId: string) {
+  const item = await prisma.calendarioItem.findUnique({
+    where: { id: calendarioItemId },
+    include: { empresa: true },
+  });
+  if (!item) throw new Error("Item de calendário não encontrado");
+
+  let tentativa = await rodarTentativaCeo(item, false);
+
+  // O CEO às vezes ignora a instrução de delegar e responde diretamente, sem acionar
+  // nenhum subagente — pulando a revisão de marca e deixando o board sem atividade.
+  // Uma segunda tentativa com a instrução reforçada resolve a grande maioria dos casos.
+  if (tentativa.subExecucoes.size === 0) {
+    console.warn(
+      `Agente CEO respondeu sem delegar a nenhum subagente (calendarioItemId=${calendarioItemId}) — repetindo com instrução reforçada.`,
+    );
+    tentativa = await rodarTentativaCeo(item, true);
+  }
+
+  const { subExecucoes, resultadoFinal, duracaoMs } = tentativa;
+
   if (!resultadoFinal) {
     await prisma.execucaoAgente.create({
       data: {
@@ -171,7 +200,7 @@ export async function executarAgenteCeo(calendarioItemId: string) {
         empresaId: item.empresaId,
         entrada: { calendarioItemId, tipoPost: item.tipoPost, briefing: item.briefing },
         saida: { erro: "Nenhuma mensagem de resultado recebida do SDK" },
-        duracaoMs: Date.now() - inicioGeral,
+        duracaoMs,
         status: "erro",
       },
     });

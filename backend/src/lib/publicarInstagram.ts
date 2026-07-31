@@ -1,5 +1,6 @@
 import { prisma } from "../db";
 import { criarContainerImagem, consultarStatusContainer, publicarContainer, MetaGraphError } from "./metaGraph";
+import { comDisclosureAutomatico } from "./disclosure";
 
 const PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL ?? "http://localhost:4000";
 
@@ -56,7 +57,8 @@ export async function publicarConteudoNoInstagram(conteudoId: string) {
   const accessToken = credenciais.access_token;
 
   try {
-    const containerId = await criarContainerImagem(igUserId, accessToken, imageUrl, conteudo.texto ?? undefined);
+    const legenda = conteudo.texto ? comDisclosureAutomatico(conteudo.texto) : undefined;
+    const containerId = await criarContainerImagem(igUserId, accessToken, imageUrl, legenda);
     await aguardarContainerPronto(containerId, accessToken);
     const externalPostId = await publicarContainer(igUserId, accessToken, containerId);
 

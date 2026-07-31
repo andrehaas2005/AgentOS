@@ -1,5 +1,6 @@
 import { prisma } from "../db";
 import { criarPost } from "./linkedinApi";
+import { comDisclosureAutomatico } from "./disclosure";
 
 export class PublicacaoLinkedinError extends Error {
   tipo: "duplicado" | "sem_conta" | "sem_texto" | "api";
@@ -39,7 +40,7 @@ export async function publicarConteudoNoLinkedin(conteudoId: string) {
   const authorUrn = `urn:li:person:${credenciais.linkedin_sub}`;
 
   try {
-    const externalPostId = await criarPost(credenciais.access_token, authorUrn, conteudo.texto);
+    const externalPostId = await criarPost(credenciais.access_token, authorUrn, comDisclosureAutomatico(conteudo.texto));
 
     return prisma.publicacao.create({
       data: {

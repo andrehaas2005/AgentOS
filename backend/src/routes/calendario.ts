@@ -21,6 +21,7 @@ const calendarioInput = z.object({
   dataHora: z.coerce.date(),
   tipoPost: z.enum(TIPOS_POST),
   briefing: z.string().optional(),
+  aprovacaoAutomatica: z.boolean().optional(),
 });
 
 calendarioRouter.get("/", async (req, res) => {

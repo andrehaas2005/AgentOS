@@ -41,12 +41,14 @@ export async function publicarConteudoNoLinkedin(conteudoId: string) {
 
   try {
     const externalPostId = await criarPost(credenciais.access_token, authorUrn, comDisclosureAutomatico(conteudo.texto));
+    const link = `https://www.linkedin.com/feed/update/${externalPostId}/`;
 
     return prisma.publicacao.create({
       data: {
         conteudoId: conteudo.id,
         rede: "linkedin",
         externalPostId,
+        link,
         status: "publicado",
       },
     });

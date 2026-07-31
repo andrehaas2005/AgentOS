@@ -1,5 +1,11 @@
 import { prisma } from "../db";
-import { criarContainerImagem, consultarStatusContainer, publicarContainer, MetaGraphError } from "./metaGraph";
+import {
+  criarContainerImagem,
+  consultarStatusContainer,
+  publicarContainer,
+  obterPermalink,
+  MetaGraphError,
+} from "./metaGraph";
 import { comDisclosureAutomatico } from "./disclosure";
 
 const PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL ?? "http://localhost:4000";
@@ -61,12 +67,14 @@ export async function publicarConteudoNoInstagram(conteudoId: string) {
     const containerId = await criarContainerImagem(igUserId, accessToken, imageUrl, legenda);
     await aguardarContainerPronto(containerId, accessToken);
     const externalPostId = await publicarContainer(igUserId, accessToken, containerId);
+    const link = await obterPermalink(externalPostId, accessToken);
 
     return prisma.publicacao.create({
       data: {
         conteudoId: conteudo.id,
         rede: "instagram",
         externalPostId,
+        link,
         status: "publicado",
       },
     });

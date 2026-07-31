@@ -45,6 +45,7 @@ export type CalendarioItem = {
   tipoPost: string;
   briefing: string | null;
   status: string;
+  aprovacaoAutomatica: boolean;
   empresa: { nome: string; logoUrl: string | null };
   conteudos?: {
     id: string;
@@ -79,29 +80,49 @@ export type Conteudo = {
   midiaUrls: string[];
   metadata?: ConteudoMetadata | null;
   versao: number;
+  aprovadoPor: string | null;
+  aprovadoEm: string | null;
   createdAt: string;
   calendario: {
     tipoPost: string;
     dataHora: string;
     status: string;
-    empresa: { nome: string; logoUrl: string | null };
+    empresa: {
+      nome: string;
+      logoUrl: string | null;
+      contasSociais: { rede: string; status: string }[];
+    };
   };
-  publicacoes: { id: string; rede: string; status: string; externalPostId: string | null }[];
+  publicacoes: { id: string; rede: string; status: string; externalPostId: string | null; link: string | null }[];
 };
 
 export type Publicacao = {
   id: string;
   rede: string;
   externalPostId: string | null;
+  link: string | null;
   status: string;
   log: string | null;
   createdAt: string;
   conteudo: {
+    texto: string | null;
+    aprovadoPor: string | null;
+    aprovadoEm: string | null;
     calendario: {
       tipoPost: string;
+      briefing: string | null;
       empresa: { nome: string; logoUrl: string | null };
     };
   };
+};
+
+export type ItemAguardandoAprovacao = {
+  id: string;
+  dataHora: string;
+  tipoPost: string;
+  briefing: string | null;
+  empresa: { nome: string; logoUrl: string | null };
+  conteudos: { id: string; texto: string | null }[];
 };
 
 export type StatusAtivo = {
@@ -124,6 +145,8 @@ export type DashboardStats = {
   postagensAgendadas: number;
   publicadasNoMes: number;
   alertas: number;
+  aguardandoAprovacao: number;
+  ultimaPublicacao: Publicacao | null;
 };
 
 async function safeFetch<T>(path: string, fallback: T): Promise<T> {
@@ -149,11 +172,17 @@ export function getStats(empresaId?: string) {
     postagensAgendadas: 0,
     publicadasNoMes: 0,
     alertas: 0,
+    aguardandoAprovacao: 0,
+    ultimaPublicacao: null,
   });
 }
 
 export function getEventos(empresaId?: string) {
   return safeFetch<ExecucaoAgente[]>(`/api/dashboard/eventos${qs({ empresaId })}`, []);
+}
+
+export function getAguardandoAprovacao(empresaId?: string) {
+  return safeFetch<ItemAguardandoAprovacao[]>(`/api/dashboard/aguardando-aprovacao${qs({ empresaId })}`, []);
 }
 
 export function getEmpresas() {
@@ -270,6 +299,7 @@ export type CalendarioItemInput = {
   dataHora: string;
   tipoPost: string;
   briefing?: string;
+  aprovacaoAutomatica?: boolean;
 };
 
 export async function criarCalendarioItem(
@@ -306,6 +336,14 @@ export function getConteudos(empresaId?: string, tipoPost?: string) {
 
 export function getPublicacoes(empresaId?: string, rede?: string) {
   return safeFetch<Publicacao[]>(`/api/publicacoes${qs({ empresaId, rede })}`, []);
+}
+
+export async function aprovarConteudo(
+  id: string,
+  aprovadoPor: string,
+): Promise<{ ok: boolean; erro?: string }> {
+  const resultado = await postJson(`/api/conteudos/${id}/aprovar`, { aprovadoPor });
+  return { ok: resultado.ok, erro: resultado.erro };
 }
 
 export function getAgentesStats(empresaId?: string) {

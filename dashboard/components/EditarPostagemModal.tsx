@@ -31,6 +31,7 @@ export function EditarPostagemModal({ item, onClose }: { item: CalendarioItem; o
   const [briefing, setBriefing] = useState(item.briefing ?? "");
   const [data, setData] = useState(iniciais.data);
   const [horario, setHorario] = useState(iniciais.horario);
+  const [aprovacaoAutomatica, setAprovacaoAutomatica] = useState(item.aprovacaoAutomatica);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -42,6 +43,7 @@ export function EditarPostagemModal({ item, onClose }: { item: CalendarioItem; o
       dataHora,
       tipoPost,
       briefing: briefing.trim() || undefined,
+      aprovacaoAutomatica,
     });
     setSalvando(false);
     if (!resultado.ok) {
@@ -90,6 +92,30 @@ export function EditarPostagemModal({ item, onClose }: { item: CalendarioItem; o
               rows={3}
               className="resize-y rounded-lg border border-border bg-surface px-3 py-2 text-sm text-white outline-none focus:border-blue-500"
             />
+          </label>
+
+          <label className="flex flex-col gap-1 text-xs text-gray-400">
+            Aprovação
+            <div className="flex gap-2 rounded-lg border border-border bg-surface p-1">
+              <button
+                type="button"
+                onClick={() => setAprovacaoAutomatica(false)}
+                className={`flex-1 rounded-md px-2 py-1.5 text-xs font-medium ${
+                  !aprovacaoAutomatica ? "bg-blue-600 text-white" : "text-gray-400 hover:text-white"
+                }`}
+              >
+                Manual
+              </button>
+              <button
+                type="button"
+                onClick={() => setAprovacaoAutomatica(true)}
+                className={`flex-1 rounded-md px-2 py-1.5 text-xs font-medium ${
+                  aprovacaoAutomatica ? "bg-blue-600 text-white" : "text-gray-400 hover:text-white"
+                }`}
+              >
+                Automática
+              </button>
+            </div>
           </label>
 
           <div className="flex gap-2">

@@ -172,3 +172,11 @@ export async function publicarContainer(igUserId: string, accessToken: string, c
   });
   return resposta.id;
 }
+
+export async function obterPermalink(mediaId: string, accessToken: string): Promise<string | null> {
+  const params = new URLSearchParams({ fields: "permalink", access_token: accessToken });
+  const resposta = await chamarGraph<{ permalink?: string }>(`${GRAPH_URL}/${mediaId}?${params.toString()}`).catch(
+    () => null,
+  );
+  return resposta?.permalink ?? null;
+}

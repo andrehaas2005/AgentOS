@@ -66,14 +66,15 @@ model ContaSocial {
 }
 
 model CalendarioItem {
-  id        String            @id @default(uuid())
-  empresaId String            @map("empresa_id")
-  empresa   Empresa           @relation(fields: [empresaId], references: [id], onDelete: Cascade)
-  dataHora  DateTime          @map("data_hora")
-  tipoPost  TipoPost          @map("tipo_post")
-  briefing  String?
-  status    StatusCalendario  @default(planejado)
-  createdAt DateTime          @default(now()) @map("created_at")
+  id                  String            @id @default(uuid())
+  empresaId           String            @map("empresa_id")
+  empresa             Empresa           @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  dataHora            DateTime          @map("data_hora")
+  tipoPost            TipoPost          @map("tipo_post")
+  briefing            String?
+  status              StatusCalendario  @default(planejado)
+  aprovacaoAutomatica Boolean           @default(false) @map("aprovacao_automatica")
+  createdAt           DateTime          @default(now()) @map("created_at")
 
   conteudos Conteudo[]
 
@@ -88,6 +89,8 @@ model Conteudo {
   midiaUrls    String[] @map("midia_urls")
   metadata     Json?
   versao       Int      @default(1)
+  aprovadoPor  String?  @map("aprovado_por")
+  aprovadoEm   DateTime? @map("aprovado_em")
   createdAt    DateTime @default(now()) @map("created_at")
 
   publicacoes Publicacao[]
@@ -101,6 +104,7 @@ model Publicacao {
   conteudo       Conteudo   @relation(fields: [conteudoId], references: [id], onDelete: Cascade)
   rede           RedeSocial
   externalPostId String?    @map("external_post_id")
+  link           String?
   status         String     @default("pendente")
   log            String?
   createdAt      DateTime   @default(now()) @map("created_at")

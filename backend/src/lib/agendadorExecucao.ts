@@ -1,13 +1,17 @@
 import { prisma } from "../db";
 import { executarAgenteCeo } from "../agentes/ceo";
+import { aprovarEPublicarConteudo } from "./aprovacao";
 
 const INTERVALO_MS = 60 * 1000;
+// Gera o conteúdo com essa antecedência em relação ao horário agendado — dá
+// margem pra revisão humana (aprovação manual) antes do horário de publicação.
+const ANTECEDENCIA_GERACAO_MS = 5 * 60 * 1000;
 
 async function verificarEDispachar() {
-  const agora = new Date();
+  const limite = new Date(Date.now() + ANTECEDENCIA_GERACAO_MS);
   const itens = await prisma.calendarioItem.findMany({
-    where: { status: "planejado", dataHora: { lte: agora } },
-    select: { id: true },
+    where: { status: "planejado", dataHora: { lte: limite } },
+    select: { id: true, aprovacaoAutomatica: true },
   });
 
   for (const item of itens) {
@@ -21,8 +25,14 @@ async function verificarEDispachar() {
     if (reivindicado.count === 0) continue;
 
     try {
-      await executarAgenteCeo(item.id);
+      const resultado = await executarAgenteCeo(item.id);
       console.log(`Execução automática concluída para o item de calendário ${item.id}`);
+
+      if (item.aprovacaoAutomatica) {
+        await aprovarEPublicarConteudo(resultado.conteudo.id, "Automático").catch((erro) =>
+          console.error(`Aprovação automática falhou para o conteúdo ${resultado.conteudo.id}:`, erro),
+        );
+      }
     } catch (erro) {
       console.error(`Execução automática falhou para o item de calendário ${item.id}:`, erro);
     }

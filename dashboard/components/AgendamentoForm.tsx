@@ -40,6 +40,7 @@ export function AgendamentoForm({ empresas, onClose }: Props) {
   const [tipoPost, setTipoPost] = useState(TIPOS_POST[0].value);
   const [briefing, setBriefing] = useState("");
   const [recorrente, setRecorrente] = useState(false);
+  const [aprovacaoAutomatica, setAprovacaoAutomatica] = useState(false);
 
   const [data, setData] = useState(hoje());
   const [horario, setHorario] = useState("09:00");
@@ -105,6 +106,7 @@ export function AgendamentoForm({ empresas, onClose }: Props) {
         dataHora: ocorrencia.toISOString(),
         tipoPost,
         briefing: briefing.trim() || undefined,
+        aprovacaoAutomatica,
       });
       if (!resultado.ok) {
         setSalvando(false);
@@ -172,6 +174,35 @@ export function AgendamentoForm({ empresas, onClose }: Props) {
               placeholder="ex: dica prática sobre o nicho da empresa"
               className="resize-y rounded-lg border border-border bg-surface px-3 py-2 text-sm text-white outline-none focus:border-blue-500"
             />
+          </label>
+
+          <label className="flex flex-col gap-1 text-xs text-gray-400">
+            Aprovação
+            <div className="flex gap-2 rounded-lg border border-border bg-surface p-1">
+              <button
+                type="button"
+                onClick={() => setAprovacaoAutomatica(false)}
+                className={`flex-1 rounded-md px-2 py-1.5 text-xs font-medium ${
+                  !aprovacaoAutomatica ? "bg-blue-600 text-white" : "text-gray-400 hover:text-white"
+                }`}
+              >
+                Manual
+              </button>
+              <button
+                type="button"
+                onClick={() => setAprovacaoAutomatica(true)}
+                className={`flex-1 rounded-md px-2 py-1.5 text-xs font-medium ${
+                  aprovacaoAutomatica ? "bg-blue-600 text-white" : "text-gray-400 hover:text-white"
+                }`}
+              >
+                Automática
+              </button>
+            </div>
+            <span className="text-[10px] text-gray-500">
+              {aprovacaoAutomatica
+                ? "Publica sozinho assim que o conteúdo fica pronto, sem revisão."
+                : "Gera o conteúdo antes do horário e espera você aprovar pra publicar."}
+            </span>
           </label>
 
           <div className="flex gap-2 rounded-lg border border-border bg-surface p-1">

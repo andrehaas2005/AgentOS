@@ -4,7 +4,8 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "../db";
 import { NOMES_EXIBICAO, subagentes } from "./definicoes";
 import { marcarAtivo, marcarInativo } from "./status";
-import { gerarTexto, gerarJson, gerarImagem, GeminiError } from "../lib/geminiClient";
+import { gerarTexto, gerarJson, gerarImagem } from "../lib/geminiClient";
+import { gerarImagemReplicate } from "../lib/replicateClient";
 
 const TIPOS_QUE_PRECISAM_ARTE = new Set(["imagem_frase", "carrossel", "stories"]);
 const TIPOS_QUE_PRECISAM_VIDEO = new Set(["animacao", "video_curto", "reels"]);
@@ -81,23 +82,25 @@ Data/hora planejada: ${item.dataHora.toISOString()}
 Briefing: ${item.briefing ?? "nenhum briefing específico — use o nicho da empresa como base"}`;
 }
 
-async function gerarImagemDoPost(
-  conteudoId: string,
-  promptImagem: string,
-): Promise<string | null> {
+async function gerarImagemDoPost(conteudoId: string, promptImagem: string): Promise<string | null> {
+  const promptFinal = `${promptImagem}\n\nA imagem deve ser fotorrealista e visualmente atraente (pessoas, natureza, ambientes reais), não um gráfico de texto genérico.`;
+  const nomeArquivo = `${conteudoId}-${Date.now()}.jpg`;
+
+  let buffer: Buffer | null = null;
   try {
-    const buffer = await gerarImagem(
-      `${promptImagem}\n\nA imagem deve ser fotorrealista e visualmente atraente (pessoas, natureza, ambientes reais), não um gráfico de texto genérico.`,
-    );
-    const nomeArquivo = `${conteudoId}-${Date.now()}.png`;
-    fs.writeFileSync(path.join(PASTA_MIDIA, nomeArquivo), buffer);
-    return `/uploads/conteudos/${nomeArquivo}`;
-  } catch (erro) {
-    console.warn(
-      `Geração de imagem via Gemini falhou (post seguirá sem mídia automática): ${erro instanceof GeminiError ? erro.message : erro}`,
-    );
-    return null;
+    buffer = await gerarImagemReplicate(promptFinal);
+  } catch (erroReplicate) {
+    console.warn(`Geração de imagem via Replicate falhou, tentando Gemini: ${erroReplicate}`);
+    try {
+      buffer = await gerarImagem(promptFinal);
+    } catch (erroGemini) {
+      console.warn(`Geração de imagem via Gemini também falhou (post seguirá sem mídia automática): ${erroGemini}`);
+      return null;
+    }
   }
+
+  fs.writeFileSync(path.join(PASTA_MIDIA, nomeArquivo), buffer);
+  return `/uploads/conteudos/${nomeArquivo}`;
 }
 
 export async function executarAgenteCeo(calendarioItemId: string) {

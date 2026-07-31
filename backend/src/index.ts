@@ -12,6 +12,7 @@ import { contasSociaisRouter } from "./routes/contasSociais";
 import { oauthInstagramRouter } from "./routes/oauthInstagram";
 import { oauthLinkedinRouter } from "./routes/oauthLinkedin";
 import { iniciarRenovacaoAutomaticaDeTokens } from "./lib/renovarTokens";
+import { iniciarAgendadorExecucao } from "./lib/agendadorExecucao";
 
 const app = express();
 
@@ -35,4 +36,5 @@ const PORT = process.env.PORT ? Number(process.env.PORT) : 4000;
 app.listen(PORT, () => {
   console.log(`AgentOS backend rodando na porta ${PORT}`);
   iniciarRenovacaoAutomaticaDeTokens();
+  iniciarAgendadorExecucao();
 });

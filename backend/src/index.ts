@@ -11,6 +11,7 @@ import { agentesRouter } from "./routes/agentes";
 import { contasSociaisRouter } from "./routes/contasSociais";
 import { oauthInstagramRouter } from "./routes/oauthInstagram";
 import { oauthLinkedinRouter } from "./routes/oauthLinkedin";
+import { iniciarRenovacaoAutomaticaDeTokens } from "./lib/renovarTokens";
 
 const app = express();
 
@@ -33,4 +34,5 @@ app.use("/api/oauth/linkedin", oauthLinkedinRouter);
 const PORT = process.env.PORT ? Number(process.env.PORT) : 4000;
 app.listen(PORT, () => {
   console.log(`AgentOS backend rodando na porta ${PORT}`);
+  iniciarRenovacaoAutomaticaDeTokens();
 });

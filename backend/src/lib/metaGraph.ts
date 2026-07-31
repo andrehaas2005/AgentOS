@@ -89,13 +89,43 @@ export type PaginaComInstagram = {
   instagram_business_account?: { id: string; username: string };
 };
 
+type DebugTokenResposta = {
+  data?: {
+    granular_scopes?: { scope: string; target_ids?: string[] }[];
+  };
+};
+
+async function listarPaginaIdsViaGranularScopes(accessToken: string): Promise<string[]> {
+  const params = new URLSearchParams({ input_token: accessToken, access_token: accessToken });
+  const resposta = await chamarGraph<DebugTokenResposta>(`${GRAPH_URL}/debug_token?${params.toString()}`).catch(
+    () => null,
+  );
+  const escopoPaginas = resposta?.data?.granular_scopes?.find((e) => e.scope === "pages_show_list");
+  return escopoPaginas?.target_ids ?? [];
+}
+
+async function buscarPaginaPorId(pageId: string, accessToken: string): Promise<PaginaComInstagram | null> {
+  const params = new URLSearchParams({
+    fields: "id,name,access_token,instagram_business_account{id,username}",
+    access_token: accessToken,
+  });
+  return chamarGraph<PaginaComInstagram>(`${GRAPH_URL}/${pageId}?${params.toString()}`).catch(() => null);
+}
+
 export async function listarPaginasComInstagram(accessToken: string): Promise<PaginaComInstagram[]> {
   const params = new URLSearchParams({
     fields: "id,name,access_token,instagram_business_account{id,username}",
     access_token: accessToken,
   });
   const resposta = await chamarGraph<{ data: PaginaComInstagram[] }>(`${GRAPH_URL}/me/accounts?${params.toString()}`);
-  return resposta.data;
+  if (resposta.data.length > 0) return resposta.data;
+
+  // Tokens emitidos com "granular scopes" (usuário escolhe páginas específicas na tela de
+  // login) fazem /me/accounts voltar vazio por design — buscar direto pelos IDs revelados
+  // no debug_token é o único jeito de recuperar essas páginas nesse caso.
+  const paginaIds = await listarPaginaIdsViaGranularScopes(accessToken);
+  const paginas = await Promise.all(paginaIds.map((id) => buscarPaginaPorId(id, accessToken)));
+  return paginas.filter((p): p is PaginaComInstagram => p !== null);
 }
 
 export async function listarPermissoesConcedidas(accessToken: string): Promise<{ permission: string; status: string }[]> {

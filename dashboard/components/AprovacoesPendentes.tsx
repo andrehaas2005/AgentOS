@@ -71,7 +71,7 @@ export function AprovacoesPendentes({ empresaId }: { empresaId?: string }) {
     <section className="mb-6 rounded-xl border border-amber-500/40 bg-amber-500/10 p-4">
       <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-amber-300">
         <Bell size={16} />
-        {itens.length} postagem{itens.length > 1 ? "ns" : ""} aguardando sua aprovação
+        {itens.length} {itens.length > 1 ? "postagens" : "postagem"} aguardando sua aprovação
       </h2>
       <div className="flex flex-col gap-2">
         {itens.map((item) => {

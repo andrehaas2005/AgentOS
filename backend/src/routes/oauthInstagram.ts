@@ -6,6 +6,7 @@ import {
   trocarCodigoPorTokenCurto,
   trocarPorTokenLongo,
   listarPaginasComInstagram,
+  listarPermissoesConcedidas,
   MetaGraphError,
   type CredenciaisMetaApp,
 } from "../lib/metaGraph";
@@ -68,9 +69,12 @@ oauthInstagramRouter.get("/callback", async (req, res) => {
     const paginaComInstagram = paginas.find((p) => p.instagram_business_account);
 
     if (!paginaComInstagram?.instagram_business_account) {
+      const permissoes = await listarPermissoesConcedidas(tokenLongo).catch((e) => [{ permission: "erro_ao_consultar", status: String(e) }]);
       console.error(
         "sem_paginas_instagram — /me/accounts retornou:",
         JSON.stringify(paginas.map((p) => ({ id: p.id, name: p.name, instagram_business_account: p.instagram_business_account }))),
+        "— /me/permissions retornou:",
+        JSON.stringify(permissoes),
       );
       return redirecionarComErro(res, "sem_paginas_instagram");
     }

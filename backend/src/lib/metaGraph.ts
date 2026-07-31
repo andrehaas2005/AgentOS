@@ -98,6 +98,14 @@ export async function listarPaginasComInstagram(accessToken: string): Promise<Pa
   return resposta.data;
 }
 
+export async function listarPermissoesConcedidas(accessToken: string): Promise<{ permission: string; status: string }[]> {
+  const params = new URLSearchParams({ access_token: accessToken });
+  const resposta = await chamarGraph<{ data: { permission: string; status: string }[] }>(
+    `${GRAPH_URL}/me/permissions?${params.toString()}`,
+  );
+  return resposta.data;
+}
+
 export async function criarContainerImagem(
   igUserId: string,
   accessToken: string,

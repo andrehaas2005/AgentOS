@@ -68,10 +68,69 @@ export async function obterPerfil(accessToken: string): Promise<PerfilLinkedin> 
   return corpo;
 }
 
-// Escopo v1: apenas posts de texto no feed pessoal — sem imagem, sem carrossel/vídeo.
+// Registra o upload de uma imagem (Images API) e devolve a URL pra onde enviar o
+// binário e a URN da imagem, que depois é referenciada em criarPost.
+export async function inicializarUploadImagem(
+  accessToken: string,
+  authorUrn: string,
+): Promise<{ uploadUrl: string; imagemUrn: string }> {
+  const res = await fetch(`${API_URL}/rest/images?action=initializeUpload`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "LinkedIn-Version": API_VERSION,
+      "X-Restli-Protocol-Version": "2.0.0",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ initializeUploadRequest: { owner: authorUrn } }),
+  });
+
+  if (!res.ok) {
+    const corpo = (await res.json().catch(() => null)) as { message?: string } | null;
+    throw new LinkedinApiError(corpo?.message ?? `LinkedIn respondeu ${res.status}`, res.status);
+  }
+
+  const corpo = (await res.json()) as { value: { uploadUrl: string; image: string } };
+  return { uploadUrl: corpo.value.uploadUrl, imagemUrn: corpo.value.image };
+}
+
+// PUT do binário da imagem na uploadUrl retornada por inicializarUploadImagem — exige
+// o mesmo token OAuth no header Authorization (diferente do upload de vídeo, que não exige).
+export async function enviarImagemLinkedin(accessToken: string, uploadUrl: string, imagem: Buffer): Promise<void> {
+  const res = await fetch(uploadUrl, {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "image/jpeg",
+    },
+    body: imagem,
+  });
+  if (!res.ok) {
+    throw new LinkedinApiError(`Falha ao enviar a imagem para o LinkedIn (status ${res.status}).`, res.status);
+  }
+}
+
+// Escopo v1: posts de texto no feed pessoal, com imagem única opcional — sem carrossel/vídeo.
 // A Posts API do LinkedIn exige o header LinkedIn-Version (formato YYYYMM) e retorna o
 // id do post criado no header x-restli-id (corpo da resposta 201 vem vazio).
-export async function criarPost(accessToken: string, authorUrn: string, texto: string): Promise<string> {
+export async function criarPost(
+  accessToken: string,
+  authorUrn: string,
+  texto: string,
+  imagemUrn?: string,
+): Promise<string> {
+  const body: Record<string, unknown> = {
+    author: authorUrn,
+    commentary: texto,
+    visibility: "PUBLIC",
+    distribution: { feedDistribution: "MAIN_FEED", targetEntities: [], thirdPartyDistributionChannels: [] },
+    lifecycleState: "PUBLISHED",
+    isReshareDisabledByAuthor: false,
+  };
+  if (imagemUrn) {
+    body.content = { media: { id: imagemUrn } };
+  }
+
   const res = await fetch(`${API_URL}/rest/posts`, {
     method: "POST",
     headers: {
@@ -80,14 +139,7 @@ export async function criarPost(accessToken: string, authorUrn: string, texto: s
       "X-Restli-Protocol-Version": "2.0.0",
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      author: authorUrn,
-      commentary: texto,
-      visibility: "PUBLIC",
-      distribution: { feedDistribution: "MAIN_FEED", targetEntities: [], thirdPartyDistributionChannels: [] },
-      lifecycleState: "PUBLISHED",
-      isReshareDisabledByAuthor: false,
-    }),
+    body: JSON.stringify(body),
   });
 
   if (!res.ok) {

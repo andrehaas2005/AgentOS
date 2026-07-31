@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Plus, Trash2, Pencil, X } from "lucide-react";
+import { Plus, Trash2, Pencil, X, Eye, EyeOff } from "lucide-react";
 import {
   atualizarContaSocial,
   criarContaSocial,
@@ -24,7 +24,7 @@ const REDES = [
 
 const REDE_LABEL: Record<string, string> = Object.fromEntries(REDES.map((r) => [r.value, r.label]));
 
-type Par = { chave: string; valor: string };
+type Par = { chave: string; valor: string; mascarado?: string };
 
 function rotuloConta(conta: ContaSocial) {
   if (conta.rede === "outro" && conta.rotuloCustom) return conta.rotuloCustom;
@@ -96,14 +96,28 @@ function MiniForm({
   const [rotuloCustom, setRotuloCustom] = useState(contaExistente?.rotuloCustom ?? "");
   const [pares, setPares] = useState<Par[]>(
     contaExistente
-      ? Object.keys(contaExistente.credenciais ?? {}).map((chave) => ({ chave, valor: "" }))
+      ? Object.entries(contaExistente.credenciais ?? {}).map(([chave, valor]) => ({
+          chave,
+          valor: "",
+          mascarado: valor,
+        }))
       : [{ chave: "", valor: "" }],
   );
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const [visiveis, setVisiveis] = useState<Set<number>>(new Set());
 
   function atualizarPar(i: number, campo: "chave" | "valor", valor: string) {
     setPares((prev) => prev.map((p, idx) => (idx === i ? { ...p, [campo]: valor } : p)));
+  }
+
+  function alternarVisivel(i: number) {
+    setVisiveis((prev) => {
+      const proximo = new Set(prev);
+      if (proximo.has(i)) proximo.delete(i);
+      else proximo.add(i);
+      return proximo;
+    });
   }
 
   async function salvar() {
@@ -162,7 +176,9 @@ function MiniForm({
       </div>
 
       <p className="mb-1 text-[11px] text-gray-500">
-        Credenciais/tokens {contaExistente && "— deixe em branco pra manter o valor atual"}
+        Credenciais/tokens
+        {contaExistente &&
+          " — o valor real não é reenviado por segurança; o texto cinza mostra os últimos dígitos do que já está salvo. Deixe em branco pra manter."}
       </p>
       <div className="flex flex-col gap-1.5">
         {pares.map((par, i) => (
@@ -176,10 +192,18 @@ function MiniForm({
             <input
               value={par.valor}
               onChange={(e) => atualizarPar(i, "valor", e.target.value)}
-              placeholder="valor"
-              type="password"
-              className="flex-1 rounded-lg border border-border bg-panel px-2 py-1 text-xs text-white outline-none"
+              placeholder={par.mascarado ? `${par.mascarado} (salvo — digite p/ substituir)` : "valor"}
+              type={visiveis.has(i) ? "text" : "password"}
+              className="flex-1 rounded-lg border border-border bg-panel px-2 py-1 text-xs text-white outline-none placeholder:text-gray-500"
             />
+            <button
+              type="button"
+              onClick={() => alternarVisivel(i)}
+              className="rounded-lg p-1 text-gray-500 hover:text-white"
+              title={visiveis.has(i) ? "Ocultar valor" : "Mostrar valor"}
+            >
+              {visiveis.has(i) ? <EyeOff size={14} /> : <Eye size={14} />}
+            </button>
             <button
               type="button"
               onClick={() => setPares((prev) => prev.filter((_, idx) => idx !== i))}

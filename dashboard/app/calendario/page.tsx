@@ -1,6 +1,7 @@
 import { Sidebar } from "@/components/Sidebar";
 import { SelectFiltro } from "@/components/SelectFiltro";
 import { EmpresaAvatar } from "@/components/EmpresaAvatar";
+import { NovaPostagemButton } from "@/components/NovaPostagemButton";
 import { getCalendario, getEmpresas } from "@/lib/api";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -36,6 +37,7 @@ export default async function CalendarioPage({
               opcoes={empresas.map((e) => ({ value: e.id, label: e.nome }))}
             />
             <SelectFiltro paramName="status" label="Status" placeholder="Todos" opcoes={STATUS_OPCOES} />
+            <NovaPostagemButton empresas={empresas} />
           </div>
         </div>
         {itens.length === 0 ? (

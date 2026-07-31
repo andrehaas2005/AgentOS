@@ -3,6 +3,7 @@ import type { Conteudo } from "@/lib/api";
 import { EmpresaAvatar } from "./EmpresaAvatar";
 import { PublicarInstagramPanel } from "./PublicarInstagramPanel";
 import { PublicarLinkedinPanel } from "./PublicarLinkedinPanel";
+import { TextoConteudo } from "./TextoConteudo";
 
 const STATUS_LABEL: Record<string, string> = {
   planejado: "Planejado",
@@ -26,6 +27,10 @@ const TIPO_ICON: Record<string, typeof ImageIcon> = {
 export function ConteudoPreviewCard({ conteudo }: { conteudo: Conteudo }) {
   const Icone = TIPO_ICON[conteudo.calendario.tipoPost] ?? FileText;
   const promptVisual = conteudo.metadata?.promptImagem ?? conteudo.metadata?.roteiroVideo;
+  // Prompt visual é só uma descrição de mídia que ainda falta gerar/subir — assim que existe
+  // mídia de verdade (upload manual, já que não há provedor de geração de imagem/vídeo), o
+  // card deve mostrar os painéis de publicar em vez da prévia do prompt pra sempre.
+  const mostrarPromptVisual = promptVisual && conteudo.midiaUrls.length === 0;
 
   return (
     <div className="flex w-full max-w-sm flex-col overflow-hidden rounded-xl border border-border bg-panel">
@@ -48,7 +53,7 @@ export function ConteudoPreviewCard({ conteudo }: { conteudo: Conteudo }) {
         </span>
       </div>
 
-      {promptVisual ? (
+      {mostrarPromptVisual ? (
         <div className="flex aspect-square flex-col items-center justify-center gap-2 bg-gradient-to-br from-surface to-black/40 px-4 text-center">
           <Icone size={32} className="text-gray-500" />
           <p className="line-clamp-4 text-[11px] italic text-gray-400">
@@ -63,7 +68,7 @@ export function ConteudoPreviewCard({ conteudo }: { conteudo: Conteudo }) {
       )}
 
       <div className="flex flex-col gap-2 p-3">
-        <p className="whitespace-pre-line text-sm text-gray-200">{conteudo.texto ?? "—"}</p>
+        <TextoConteudo id={conteudo.id} texto={conteudo.texto} />
 
         {conteudo.metadata?.hashtags && conteudo.metadata.hashtags.length > 0 && (
           <div className="flex flex-wrap gap-1">

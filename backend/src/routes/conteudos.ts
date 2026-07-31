@@ -38,6 +38,17 @@ conteudosRouter.get("/", async (req, res) => {
   res.json(conteudos);
 });
 
+conteudosRouter.patch("/:id", async (req, res) => {
+  const { texto } = req.body as { texto?: unknown };
+  if (typeof texto !== "string") return res.status(400).json({ error: "Campo 'texto' é obrigatório." });
+
+  const conteudo = await prisma.conteudo
+    .update({ where: { id: req.params.id }, data: { texto } })
+    .catch(() => null);
+  if (!conteudo) return res.status(404).json({ error: "Conteúdo não encontrado" });
+  res.json(conteudo);
+});
+
 conteudosRouter.post("/:id/midia", uploadMidia.single("midia"), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: "Envie uma imagem JPEG de até 8MB." });
 

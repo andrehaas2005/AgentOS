@@ -259,6 +259,20 @@ export function getCalendario(empresaId?: string, status?: string) {
   return safeFetch<CalendarioItem[]>(`/api/calendario${qs({ empresaId, status })}`, []);
 }
 
+export type CalendarioItemInput = {
+  empresaId: string;
+  dataHora: string;
+  tipoPost: string;
+  briefing?: string;
+};
+
+export async function criarCalendarioItem(
+  dados: CalendarioItemInput,
+): Promise<{ ok: boolean; erro?: string }> {
+  const resultado = await postJson("/api/calendario", dados);
+  return { ok: resultado.ok, erro: resultado.erro };
+}
+
 export function getConteudos(empresaId?: string, tipoPost?: string) {
   return safeFetch<Conteudo[]>(`/api/conteudos${qs({ empresaId, tipoPost })}`, []);
 }
@@ -285,6 +299,20 @@ export function urlOauthInstagram(contaSocialId: string): string {
 
 export function urlOauthLinkedin(contaSocialId: string): string {
   return urlPublica(`/api/oauth/linkedin/iniciar/${contaSocialId}`);
+}
+
+export async function atualizarConteudo(id: string, texto: string): Promise<{ ok: boolean; erro?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/api/conteudos/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ texto }),
+    });
+    if (!res.ok) return { ok: false, erro: "Não foi possível salvar." };
+    return { ok: true };
+  } catch {
+    return { ok: false, erro: "Falha de conexão com o backend." };
+  }
 }
 
 export async function enviarMidiaConteudo(

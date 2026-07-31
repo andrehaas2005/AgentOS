@@ -1,7 +1,7 @@
 const AUTHORIZE_URL = "https://www.linkedin.com/oauth/v2/authorization";
 const TOKEN_URL = "https://www.linkedin.com/oauth/v2/accessToken";
 const API_URL = "https://api.linkedin.com";
-const API_VERSION = process.env.LINKEDIN_API_VERSION ?? "202401";
+const API_VERSION = process.env.LINKEDIN_API_VERSION ?? "202607";
 
 export class LinkedinApiError extends Error {
   status?: number;

@@ -4,10 +4,18 @@ const MODELO_TEXTO = process.env.GEMINI_MODELO_TEXTO ?? "gemini-flash-latest";
 const MODELO_IMAGEM = process.env.GEMINI_MODELO_IMAGEM ?? "gemini-2.5-flash-image";
 
 export class GeminiError extends Error {}
+class GeminiTransitorioError extends GeminiError {}
 
 type ParteResposta = { text?: string; inlineData?: { mimeType: string; data: string } };
 
-async function chamarGemini(modelo: string, body: Record<string, unknown>): Promise<{ parts: ParteResposta[] }> {
+const MAX_TENTATIVAS = 3;
+const ESPERA_BASE_MS = 2000;
+
+function ehErroTransitorio(mensagem: string, status: number): boolean {
+  return status === 503 || status === 429 || /high demand|overloaded|unavailable/i.test(mensagem);
+}
+
+async function chamarGeminiUmaVez(modelo: string, body: Record<string, unknown>): Promise<{ parts: ParteResposta[] }> {
   if (!GEMINI_API_KEY) throw new GeminiError("GEMINI_API_KEY não configurada");
 
   const res = await fetch(`${GEMINI_URL}/models/${modelo}:generateContent`, {
@@ -21,12 +29,29 @@ async function chamarGemini(modelo: string, body: Record<string, unknown>): Prom
   } | null;
 
   if (!res.ok || !corpo || corpo.error) {
-    throw new GeminiError(corpo?.error?.message ?? `Gemini respondeu ${res.status}`);
+    const mensagem = corpo?.error?.message ?? `Gemini respondeu ${res.status}`;
+    if (ehErroTransitorio(mensagem, res.status)) {
+      throw new GeminiTransitorioError(mensagem);
+    }
+    throw new GeminiError(mensagem);
   }
 
   const parts = corpo.candidates?.[0]?.content?.parts ?? [];
   if (parts.length === 0) throw new GeminiError("Gemini não retornou conteúdo.");
   return { parts };
+}
+
+async function chamarGemini(modelo: string, body: Record<string, unknown>): Promise<{ parts: ParteResposta[] }> {
+  for (let tentativa = 1; tentativa <= MAX_TENTATIVAS; tentativa++) {
+    try {
+      return await chamarGeminiUmaVez(modelo, body);
+    } catch (erro) {
+      const ultimaTentativa = tentativa === MAX_TENTATIVAS;
+      if (!(erro instanceof GeminiTransitorioError) || ultimaTentativa) throw erro;
+      await new Promise((resolve) => setTimeout(resolve, ESPERA_BASE_MS * tentativa));
+    }
+  }
+  throw new GeminiError("Falha inesperada ao chamar o Gemini.");
 }
 
 export async function gerarTexto(systemPrompt: string, prompt: string): Promise<string> {

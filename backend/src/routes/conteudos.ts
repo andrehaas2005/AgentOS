@@ -4,9 +4,9 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import { prisma } from "../db";
-import { publicarConteudoNoInstagram, PublicacaoInstagramError } from "../lib/publicarInstagram";
-import { publicarConteudoNoLinkedin, PublicacaoLinkedinError } from "../lib/publicarLinkedin";
-import { aprovarEPublicarConteudo } from "../lib/aprovacao";
+import { PublicacaoInstagramError } from "../lib/publicarInstagram";
+import { PublicacaoLinkedinError } from "../lib/publicarLinkedin";
+import { aprovarConteudo, executarPublicacaoAgente, atualizarStatusAposPublicacao } from "../lib/aprovacao";
 
 export const conteudosRouter = Router();
 
@@ -66,8 +66,18 @@ conteudosRouter.post("/:id/midia", uploadMidia.single("midia"), async (req, res)
 
 conteudosRouter.post("/:id/publicar", async (req, res) => {
   try {
-    const publicacao = await publicarConteudoNoInstagram(req.params.id);
-    res.status(201).json(publicacao);
+    const conteudo = await prisma.conteudo.findUnique({
+      where: { id: req.params.id },
+      include: { calendario: true },
+    });
+    if (!conteudo) return res.status(404).json({ error: "Conteúdo não encontrado." });
+    if (!conteudo.aprovadoPor) {
+      return res.status(403).json({ error: "Este conteúdo ainda não foi aprovado. Aprove antes de publicar." });
+    }
+
+    await executarPublicacaoAgente(req.params.id, conteudo.calendario.empresaId, "instagram");
+    await atualizarStatusAposPublicacao(conteudo.calendarioId);
+    res.status(201).json({ ok: true });
   } catch (erro) {
     if (erro instanceof PublicacaoInstagramError) {
       const status = erro.tipo === "duplicado" ? 409 : 400;
@@ -83,8 +93,8 @@ conteudosRouter.post("/:id/aprovar", async (req, res) => {
     return res.status(400).json({ error: "Informe quem está aprovando." });
   }
   try {
-    const resultados = await aprovarEPublicarConteudo(req.params.id, aprovadoPor.trim());
-    res.status(200).json({ resultados });
+    await aprovarConteudo(req.params.id, aprovadoPor.trim());
+    res.status(200).json({ ok: true });
   } catch (erro) {
     res.status(500).json({ error: erro instanceof Error ? erro.message : "Erro inesperado ao aprovar." });
   }
@@ -92,8 +102,18 @@ conteudosRouter.post("/:id/aprovar", async (req, res) => {
 
 conteudosRouter.post("/:id/publicar-linkedin", async (req, res) => {
   try {
-    const publicacao = await publicarConteudoNoLinkedin(req.params.id);
-    res.status(201).json(publicacao);
+    const conteudo = await prisma.conteudo.findUnique({
+      where: { id: req.params.id },
+      include: { calendario: true },
+    });
+    if (!conteudo) return res.status(404).json({ error: "Conteúdo não encontrado." });
+    if (!conteudo.aprovadoPor) {
+      return res.status(403).json({ error: "Este conteúdo ainda não foi aprovado. Aprove antes de publicar." });
+    }
+
+    await executarPublicacaoAgente(req.params.id, conteudo.calendario.empresaId, "linkedin");
+    await atualizarStatusAposPublicacao(conteudo.calendarioId);
+    res.status(201).json({ ok: true });
   } catch (erro) {
     if (erro instanceof PublicacaoLinkedinError) {
       const status = erro.tipo === "duplicado" ? 409 : 400;

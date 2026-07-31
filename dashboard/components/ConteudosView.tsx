@@ -11,6 +11,7 @@ const STATUS_LABEL: Record<string, string> = {
   em_producao: "Em produção",
   aguardando_aprovacao: "Aguardando aprovação",
   aprovado: "Aprovado",
+  publicando: "Publicando",
   publicado: "Publicado",
   erro: "Erro",
 };

@@ -47,10 +47,13 @@ export default async function DashboardPage({
             value={stats.aguardandoAprovacao}
             tone={stats.aguardandoAprovacao > 0 ? "alert" : "default"}
           />
-          <StatTile label="Alertas" value={stats.alertas} tone={stats.alertas > 0 ? "alert" : "default"} />
+          <StatTile
+            label="Alertas"
+            value={stats.alertas}
+            tone={stats.alertas > 0 ? "alert" : "default"}
+            href="/calendario?status=erro"
+          />
         </section>
-
-        <AprovacoesPendentes empresaId={empresaId} />
 
         {stats.ultimaPublicacao && (
           <section className="mb-6 rounded-xl border border-border bg-panel p-4">
@@ -91,7 +94,10 @@ export default async function DashboardPage({
             <EscritorioAgentes />
           </div>
 
-          <EventFeed eventos={eventos} />
+          <div className="flex flex-col gap-4">
+            <AprovacoesPendentes empresaId={empresaId} />
+            <EventFeed eventos={eventos} />
+          </div>
         </section>
 
         <section className="mt-6">

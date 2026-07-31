@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Bell } from "lucide-react";
 import { EmpresaAvatar } from "./EmpresaAvatar";
 import {
@@ -65,55 +66,62 @@ export function AprovacoesPendentes({ empresaId }: { empresaId?: string }) {
     router.refresh();
   }
 
-  if (itens.length === 0) return null;
-
   return (
-    <section className="mb-6 rounded-xl border border-amber-500/40 bg-amber-500/10 p-4">
-      <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-amber-300">
-        <Bell size={16} />
-        {itens.length} {itens.length > 1 ? "postagens" : "postagem"} aguardando sua aprovação
+    <aside className="w-80 shrink-0 rounded-xl border border-border bg-panel p-4">
+      <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-white">
+        <Bell size={14} className="text-amber-400" />
+        Aguardando Aprovação
+        {itens.length > 0 && (
+          <span className="rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium text-amber-300">
+            {itens.length}
+          </span>
+        )}
       </h2>
-      <div className="flex flex-col gap-2">
-        {itens.map((item) => {
-          const conteudo = item.conteudos[0];
-          const assunto = item.briefing?.trim() || conteudo?.texto?.slice(0, 90) || "—";
-          const ocupado = processando === item.id;
-          return (
-            <div
-              key={item.id}
-              className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-surface p-3"
-            >
-              <div className="flex min-w-0 items-center gap-2">
-                <EmpresaAvatar nome={item.empresa.nome} logoUrl={item.empresa.logoUrl} size={22} />
-                <div className="min-w-0">
-                  <p className="truncate text-sm text-white">
-                    {item.empresa.nome} · {formatarDataHoraBR(item.dataHora)}
-                  </p>
-                  <p className="max-w-md truncate text-xs text-gray-400">{assunto}</p>
+      {itens.length === 0 ? (
+        <p className="text-sm text-gray-500">Nenhuma postagem aguardando aprovação.</p>
+      ) : (
+        <ul className="flex max-h-[520px] flex-col gap-3 overflow-y-auto pr-1">
+          {itens.map((item) => {
+            const conteudo = item.conteudos[0];
+            const assunto = item.briefing?.trim() || conteudo?.texto?.slice(0, 90) || "—";
+            const ocupado = processando === item.id;
+            return (
+              <li key={item.id} className="rounded-lg bg-surface p-2.5">
+                <Link
+                  href={`/calendario?highlight=${item.id}`}
+                  className="flex items-start gap-2 hover:opacity-80"
+                >
+                  <EmpresaAvatar nome={item.empresa.nome} logoUrl={item.empresa.logoUrl} size={20} />
+                  <div className="min-w-0">
+                    <p className="truncate text-xs text-gray-200">
+                      {item.empresa.nome} · {formatarDataHoraBR(item.dataHora)}
+                    </p>
+                    <p className="line-clamp-2 text-[11px] text-gray-500">{assunto}</p>
+                  </div>
+                </Link>
+                <div className="mt-2 flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => rejeitar(item.id)}
+                    disabled={ocupado}
+                    className="rounded-md px-2 py-1 text-[11px] text-red-400 hover:bg-red-500/10 disabled:opacity-50"
+                  >
+                    Rejeitar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => conteudo && aprovar(item.id, conteudo.id)}
+                    disabled={!conteudo || ocupado}
+                    className="rounded-md bg-blue-600 px-2 py-1 text-[11px] font-medium text-white hover:bg-blue-500 disabled:opacity-50"
+                  >
+                    {ocupado ? "..." : "Aprovar"}
+                  </button>
                 </div>
-              </div>
-              <div className="flex shrink-0 gap-2">
-                <button
-                  type="button"
-                  onClick={() => rejeitar(item.id)}
-                  disabled={ocupado}
-                  className="rounded-lg px-3 py-1.5 text-xs text-red-400 hover:bg-red-500/10 disabled:opacity-50"
-                >
-                  Rejeitar
-                </button>
-                <button
-                  type="button"
-                  onClick={() => conteudo && aprovar(item.id, conteudo.id)}
-                  disabled={!conteudo || ocupado}
-                  className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-500 disabled:opacity-50"
-                >
-                  {ocupado ? "Processando..." : "Aprovar e publicar"}
-                </button>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </section>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </aside>
   );
 }

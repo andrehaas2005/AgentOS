@@ -21,7 +21,7 @@ dashboardRouter.get("/stats", async (req, res) => {
       prisma.empresa.count(),
       prisma.calendarioItem.count({
         where: {
-          status: { in: ["planejado", "em_producao", "aguardando_aprovacao", "aprovado"] },
+          status: { in: ["planejado", "em_producao", "aguardando_aprovacao", "aprovado", "publicando"] },
           empresaId,
         },
       }),

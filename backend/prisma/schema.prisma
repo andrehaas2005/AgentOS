@@ -33,6 +33,7 @@ enum StatusCalendario {
   em_producao
   aguardando_aprovacao
   aprovado
+  publicando
   publicado
   erro
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { EmpresaAvatar } from "./EmpresaAvatar";
 import { EditarPostagemModal } from "./EditarPostagemModal";
@@ -11,6 +11,7 @@ const STATUS_LABEL: Record<string, string> = {
   em_producao: "Em produção",
   aguardando_aprovacao: "Aguardando aprovação",
   aprovado: "Aprovado",
+  publicando: "Publicando",
   publicado: "Publicado",
   erro: "Erro",
 };
@@ -20,6 +21,7 @@ const STATUS_ESTILO: Record<string, { badge: string; borda: string }> = {
   em_producao: { badge: "bg-blue-500/15 text-blue-300", borda: "border-l-blue-500" },
   aguardando_aprovacao: { badge: "bg-amber-500/15 text-amber-300", borda: "border-l-amber-500" },
   aprovado: { badge: "bg-cyan-500/15 text-cyan-300", borda: "border-l-cyan-500" },
+  publicando: { badge: "bg-purple-500/15 text-purple-300", borda: "border-l-purple-500" },
   publicado: { badge: "bg-green-500/15 text-green-300", borda: "border-l-green-500" },
   erro: { badge: "bg-red-500/15 text-red-300", borda: "border-l-red-500" },
 };
@@ -46,10 +48,23 @@ function formatarDataHoraBR(iso: string): string {
   return `${semana} ${dia} ${hora}`;
 }
 
-export function CalendarioTable({ itens }: { itens: CalendarioItem[] }) {
+export function CalendarioTable({
+  itens,
+  highlightId,
+}: {
+  itens: CalendarioItem[];
+  highlightId?: string;
+}) {
   const router = useRouter();
   const [editando, setEditando] = useState<CalendarioItem | null>(null);
   const [excluindoId, setExcluindoId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!highlightId) return;
+    const item = itens.find((i) => i.id === highlightId);
+    if (item) setEditando(item);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [highlightId]);
 
   async function excluir(item: CalendarioItem) {
     if (!window.confirm("Excluir esta postagem agendada? Essa ação não pode ser desfeita.")) return;
@@ -86,7 +101,11 @@ export function CalendarioTable({ itens }: { itens: CalendarioItem[] }) {
             const statusEfetivo = publicacaoOk ? "publicado" : item.status;
             const estilo = STATUS_ESTILO[statusEfetivo] ?? STATUS_ESTILO.planejado;
             const assunto = item.briefing?.trim() || conteudo?.texto?.slice(0, 80) || "—";
-            const podeExcluir = !publicacaoOk && item.status !== "aprovado" && item.status !== "publicado";
+            const podeExcluir =
+              !publicacaoOk &&
+              item.status !== "aprovado" &&
+              item.status !== "publicando" &&
+              item.status !== "publicado";
 
             return (
               <tr

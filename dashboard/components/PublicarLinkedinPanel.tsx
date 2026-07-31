@@ -46,6 +46,7 @@ export function PublicarLinkedinPanel({ conteudo }: { conteudo: Conteudo }) {
     );
   }
 
+  if (!conteudo.aprovadoPor) return null;
   if (!conteudo.texto || !conteudo.texto.trim()) return null;
 
   return (

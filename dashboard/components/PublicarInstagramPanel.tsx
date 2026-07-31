@@ -49,6 +49,7 @@ export function PublicarInstagramPanel({ conteudo }: { conteudo: Conteudo }) {
     );
   }
 
+  if (!conteudo.aprovadoPor) return null;
   if (!midiaUrl) return null;
 
   return (

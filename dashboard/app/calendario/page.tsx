@@ -10,6 +10,7 @@ const STATUS_LABEL: Record<string, string> = {
   em_producao: "Em produção",
   aguardando_aprovacao: "Aguardando aprovação",
   aprovado: "Aprovado",
+  publicando: "Publicando",
   publicado: "Publicado",
   erro: "Erro",
 };
@@ -19,9 +20,9 @@ const STATUS_OPCOES = Object.entries(STATUS_LABEL).map(([value, label]) => ({ va
 export default async function CalendarioPage({
   searchParams,
 }: {
-  searchParams: Promise<{ empresaId?: string; status?: string }>;
+  searchParams: Promise<{ empresaId?: string; status?: string; highlight?: string }>;
 }) {
-  const { empresaId, status } = await searchParams;
+  const { empresaId, status, highlight } = await searchParams;
   const [itens, empresas] = await Promise.all([getCalendario(empresaId, status), getEmpresas()]);
 
   return (
@@ -39,7 +40,7 @@ export default async function CalendarioPage({
         {itens.length === 0 ? (
           <p className="text-sm text-gray-500">Nenhuma postagem agendada ainda.</p>
         ) : (
-          <CalendarioTable itens={itens} />
+          <CalendarioTable itens={itens} highlightId={highlight} />
         )}
       </main>
     </div>

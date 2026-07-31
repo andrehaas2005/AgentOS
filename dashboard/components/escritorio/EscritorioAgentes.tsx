@@ -26,6 +26,11 @@ const DESKS = Object.values(POSICOES).map((pos) => pos.mesa);
 // personagem pra cima da parede ou da sala de trabalho.
 const LIMITES_COPA = { xMin: 58, xMax: 97, yMin: 22, yMax: 92 };
 
+// Quanto tempo o agente fica parado na mesa depois de terminar antes de sair
+// andando pra copa — o status (bolinha verde/laranja) muda na hora, só o
+// deslocamento físico que espera esse tempo.
+const AGUARDAR_ANTES_DE_SAIR_MS = 60000;
+
 function pontoProximo(base: { x: number; y: number }): { x: number; y: number } {
   const x = base.x + (Math.random() * 16 - 8);
   const y = base.y + (Math.random() * 20 - 10);
@@ -42,6 +47,7 @@ export function EscritorioAgentes() {
   const [falasOciosos, setFalasOciosos] = useState<Record<string, Fala>>({});
   const [selecionado, setSelecionado] = useState<string | null>(null);
   const [passeioOcioso, setPasseioOcioso] = useState<Record<string, { x: number; y: number }>>({});
+  const [ficouOciosoEm, setFicouOciosoEm] = useState<Record<string, number>>({});
 
   useEffect(() => {
     let cancelado = false;
@@ -85,6 +91,29 @@ export function EscritorioAgentes() {
       });
     }, 2200);
     return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ativos]);
+
+  // Marca o instante em que cada agente deixou de estar ativo — usado só pra
+  // segurar o deslocamento físico até a mesa, sem atrasar a bolinha de status.
+  useEffect(() => {
+    setFicouOciosoEm((prev) => {
+      let mudou = false;
+      const proximo = { ...prev };
+      for (const agente of AGENTES) {
+        const nome = agente.nome;
+        if (ativoPorNome.has(nome)) {
+          if (proximo[nome] !== undefined) {
+            delete proximo[nome];
+            mudou = true;
+          }
+        } else if (proximo[nome] === undefined) {
+          proximo[nome] = Date.now();
+          mudou = true;
+        }
+      }
+      return mudou ? proximo : prev;
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ativos]);
 
@@ -291,7 +320,9 @@ export function EscritorioAgentes() {
         const ativo = ativoPorNome.get(agente.nome);
         const pos = POSICOES[agente.nome];
         if (!pos) return null;
-        const alvo = ativo ? pos.mesa : (passeioOcioso[agente.nome] ?? pos.copa);
+        const desde = ficouOciosoEm[agente.nome];
+        const aindaNaMesa = !ativo && desde !== undefined && Date.now() - desde < AGUARDAR_ANTES_DE_SAIR_MS;
+        const alvo = ativo || aindaNaMesa ? pos.mesa : (passeioOcioso[agente.nome] ?? pos.copa);
 
         return (
           <PersonagemCena

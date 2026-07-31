@@ -1,175 +1,103 @@
-import type { Options, SDKMessage } from "@anthropic-ai/claude-agent-sdk";
+import path from "path";
+import fs from "fs";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "../db";
 import { NOMES_EXIBICAO, subagentes } from "./definicoes";
 import { marcarAtivo, marcarInativo } from "./status";
-
-type SDKResultMessage = Extract<SDKMessage, { type: "result" }>;
-type SDKAssistantMessage = Extract<SDKMessage, { type: "assistant" }>;
-
-type SubExecucao = {
-  subagentType: string;
-  descricao?: string;
-  inicioMs: number;
-  fimMs: number;
-  saida: string;
-};
-
-type ConteudoEstruturado = {
-  legenda?: string;
-  hashtags?: string[];
-  cta?: string;
-  promptImagem?: string;
-  roteiroVideo?: string;
-  aprovado?: boolean;
-  observacoesRevisor?: string;
-};
+import { gerarTexto, gerarJson, gerarImagem, GeminiError } from "../lib/geminiClient";
 
 const TIPOS_QUE_PRECISAM_ARTE = new Set(["imagem_frase", "carrossel", "stories"]);
 const TIPOS_QUE_PRECISAM_VIDEO = new Set(["animacao", "video_curto", "reels"]);
 
-function extrairTexto(content: unknown): string {
-  if (!Array.isArray(content)) return "";
-  return content
-    .filter(
-      (bloco): bloco is { type: string; text: string } =>
-        typeof bloco === "object" &&
-        bloco !== null &&
-        (bloco as { type?: unknown }).type === "text" &&
-        typeof (bloco as { text?: unknown }).text === "string",
-    )
-    .map((bloco) => bloco.text)
-    .join("");
+const PASTA_MIDIA = path.join(__dirname, "../../uploads/conteudos");
+fs.mkdirSync(PASTA_MIDIA, { recursive: true });
+
+type ItemComEmpresa = {
+  id: string;
+  empresaId: string;
+  tipoPost: string;
+  dataHora: Date;
+  briefing: string | null;
+  empresa: { nome: string; nicho: string | null; tomDeVoz: string | null; brandGuidelines: unknown };
+};
+
+type ConteudoEstruturado = {
+  legenda: string;
+  hashtags: string[];
+  cta: string;
+  promptImagem?: string;
+  roteiroVideo?: string;
+  aprovado: boolean;
+  observacoesRevisor: string;
+};
+
+async function rodarEtapa<T>(
+  agente: string,
+  empresaId: string,
+  descricao: string,
+  executar: () => Promise<T>,
+): Promise<T> {
+  const nomeExibicao = NOMES_EXIBICAO[agente] ?? agente;
+  const inicio = Date.now();
+  marcarAtivo(nomeExibicao, descricao);
+  try {
+    const resultado = await executar();
+    await prisma.execucaoAgente.create({
+      data: {
+        agente: nomeExibicao,
+        empresaId,
+        entrada: { descricao },
+        saida: { texto: typeof resultado === "string" ? resultado : JSON.stringify(resultado) },
+        duracaoMs: Date.now() - inicio,
+        status: "sucesso",
+      },
+    });
+    return resultado;
+  } catch (erro) {
+    await prisma.execucaoAgente.create({
+      data: {
+        agente: nomeExibicao,
+        empresaId,
+        entrada: { descricao },
+        saida: { erro: erro instanceof Error ? erro.message : String(erro) },
+        duracaoMs: Date.now() - inicio,
+        status: "erro",
+      },
+    });
+    throw erro;
+  } finally {
+    marcarInativo(nomeExibicao);
+  }
 }
 
-function montarPromptCeo(
-  item: {
-    tipoPost: string;
-    dataHora: Date;
-    briefing: string | null;
-    empresa: { nome: string; nicho: string | null; tomDeVoz: string | null; brandGuidelines: unknown };
-  },
-  reforcarDelegacao = false,
-): string {
-  const precisaArte = TIPOS_QUE_PRECISAM_ARTE.has(item.tipoPost);
-  const precisaVideo = TIPOS_QUE_PRECISAM_VIDEO.has(item.tipoPost);
-
-  const passosMidia = [
-    precisaArte
-      ? '3. Delegue ao subagente "diretor-arte" para gerar o prompt descritivo de imagem.'
-      : null,
-    precisaVideo
-      ? '3. Delegue ao subagente "diretor-video" para gerar o roteiro de vídeo.'
-      : null,
-  ].filter(Boolean);
-
-  const aviso = reforcarDelegacao
-    ? `\n\nATENÇÃO — TENTATIVA ANTERIOR REJEITADA: você respondeu diretamente sem usar a ferramenta Task para delegar aos subagentes. Isso é PROIBIDO, mesmo que o post pareça simples. Você é apenas o orquestrador — não escreva ângulo, legenda, hashtags, prompt de imagem/roteiro ou revisão você mesmo. Use a ferramenta Task para acionar CADA subagente listado abaixo, um por um, antes de responder o JSON final.\n`
-    : "";
-
-  return `Você é o Agente CEO do AgentOS, responsável por orquestrar a produção do conteúdo de um post.
-${aviso}
-Empresa: ${item.empresa.nome}
+function contextoEmpresa(item: ItemComEmpresa): string {
+  return `Empresa: ${item.empresa.nome}
 Nicho: ${item.empresa.nicho ?? "não informado"}
 Tom de voz: ${item.empresa.tomDeVoz ?? "não informado"}
 Guidelines de marca: ${item.empresa.brandGuidelines ? JSON.stringify(item.empresa.brandGuidelines) : "nenhuma definida"}
 
-Item do calendário:
 Tipo de post: ${item.tipoPost}
 Data/hora planejada: ${item.dataHora.toISOString()}
-Briefing: ${item.briefing ?? "nenhum briefing específico — use o nicho da empresa como base"}
-
-Fluxo obrigatório (use a ferramenta Task para cada um destes passos, nunca responda diretamente):
-1. Delegue ao subagente "estrategista-conteudo" para definir o ângulo do post.
-2. Delegue ao subagente "redator" para escrever a legenda, hashtags e CTA com base no ângulo.
-${passosMidia.join("\n")}
-${passosMidia.length + 3}. Delegue ao subagente "revisor-marca" para revisar o conteúdo final contra as guidelines.
-${passosMidia.length + 4}. Só então responda no formato JSON pedido, consolidando tudo que os subagentes produziram.
-
-Não publique nada e não gere mídia de verdade — apenas texto/JSON.`;
+Briefing: ${item.briefing ?? "nenhum briefing específico — use o nicho da empresa como base"}`;
 }
 
-type TentativaCeo = {
-  subExecucoes: Map<string, SubExecucao>;
-  resultadoFinal: SDKResultMessage | undefined;
-  duracaoMs: number;
-};
-
-async function rodarTentativaCeo(
-  item: Awaited<ReturnType<typeof prisma.calendarioItem.findUnique>> & {
-    empresa: { nome: string; nicho: string | null; tomDeVoz: string | null; brandGuidelines: unknown };
-  },
-  reforcarDelegacao: boolean,
-): Promise<TentativaCeo> {
-  const { query } = await import("@anthropic-ai/claude-agent-sdk");
-
-  const options: Options = {
-    systemPrompt:
-      "Você é o Agente CEO: orquestra os subagentes especializados para produzir o conteúdo de um post de rede social. Sempre delegue cada etapa ao subagente certo, usando a ferramenta Task — nunca escreva o conteúdo final você mesmo.",
-    tools: ["Task"],
-    allowedTools: ["Task"],
-    permissionMode: "dontAsk",
-    agents: subagentes,
-    model: "sonnet",
-    outputFormat: {
-      type: "json_schema",
-      schema: {
-        type: "object",
-        properties: {
-          legenda: { type: "string" },
-          hashtags: { type: "array", items: { type: "string" } },
-          cta: { type: "string" },
-          promptImagem: { type: "string" },
-          roteiroVideo: { type: "string" },
-          aprovado: { type: "boolean" },
-          observacoesRevisor: { type: "string" },
-        },
-        required: ["legenda", "hashtags", "aprovado"],
-      },
-    },
-  };
-
-  const subExecucoes = new Map<string, SubExecucao>();
-  let resultadoFinal: SDKResultMessage | undefined;
-  const inicioGeral = Date.now();
-
-  marcarAtivo("CEO", `Executando ${item.tipoPost}`);
+async function gerarImagemDoPost(
+  conteudoId: string,
+  promptImagem: string,
+): Promise<string | null> {
   try {
-    for await (const message of query({ prompt: montarPromptCeo(item, reforcarDelegacao), options })) {
-      if (message.type === "assistant") {
-        const assistente = message as SDKAssistantMessage;
-        if (assistente.parent_tool_use_id) {
-          const chave = assistente.parent_tool_use_id;
-          const texto = extrairTexto((assistente.message as { content?: unknown }).content);
-          const existente = subExecucoes.get(chave);
-          if (existente) {
-            existente.saida += texto;
-            existente.fimMs = Date.now();
-          } else {
-            const nomeExibicao = NOMES_EXIBICAO[assistente.subagent_type ?? ""] ?? assistente.subagent_type;
-            subExecucoes.set(chave, {
-              subagentType: assistente.subagent_type ?? "desconhecido",
-              descricao: assistente.task_description,
-              inicioMs: Date.now(),
-              fimMs: Date.now(),
-              saida: texto,
-            });
-            if (nomeExibicao) marcarAtivo(nomeExibicao, assistente.task_description);
-          }
-        }
-      }
-      if (message.type === "result") {
-        resultadoFinal = message as SDKResultMessage;
-      }
-    }
-  } finally {
-    marcarInativo("CEO");
-    for (const exec of subExecucoes.values()) {
-      marcarInativo(NOMES_EXIBICAO[exec.subagentType] ?? exec.subagentType);
-    }
+    const buffer = await gerarImagem(
+      `${promptImagem}\n\nA imagem deve ser fotorrealista e visualmente atraente (pessoas, natureza, ambientes reais), não um gráfico de texto genérico.`,
+    );
+    const nomeArquivo = `${conteudoId}-${Date.now()}.png`;
+    fs.writeFileSync(path.join(PASTA_MIDIA, nomeArquivo), buffer);
+    return `/uploads/conteudos/${nomeArquivo}`;
+  } catch (erro) {
+    console.warn(
+      `Geração de imagem via Gemini falhou (post seguirá sem mídia automática): ${erro instanceof GeminiError ? erro.message : erro}`,
+    );
+    return null;
   }
-
-  return { subExecucoes, resultadoFinal, duracaoMs: Date.now() - inicioGeral };
 }
 
 export async function executarAgenteCeo(calendarioItemId: string) {
@@ -179,92 +107,151 @@ export async function executarAgenteCeo(calendarioItemId: string) {
   });
   if (!item) throw new Error("Item de calendário não encontrado");
 
-  let tentativa = await rodarTentativaCeo(item, false);
+  const precisaArte = TIPOS_QUE_PRECISAM_ARTE.has(item.tipoPost);
+  const precisaVideo = TIPOS_QUE_PRECISAM_VIDEO.has(item.tipoPost);
+  const contexto = contextoEmpresa(item);
+  const inicioGeral = Date.now();
 
-  // O CEO às vezes ignora a instrução de delegar e responde diretamente, sem acionar
-  // nenhum subagente — pulando a revisão de marca e deixando o board sem atividade.
-  // Uma segunda tentativa com a instrução reforçada resolve a grande maioria dos casos.
-  if (tentativa.subExecucoes.size === 0) {
-    console.warn(
-      `Agente CEO respondeu sem delegar a nenhum subagente (calendarioItemId=${calendarioItemId}) — repetindo com instrução reforçada.`,
+  marcarAtivo("CEO", `Orquestrando ${item.tipoPost}`);
+  try {
+    const angulo = await rodarEtapa("estrategista-conteudo", item.empresaId, "Definir ângulo do post", () =>
+      gerarTexto(
+        subagentes["estrategista-conteudo"].prompt,
+        `${contexto}\n\nDefina o ângulo/tema central deste post.`,
+      ),
     );
-    tentativa = await rodarTentativaCeo(item, true);
-  }
 
-  const { subExecucoes, resultadoFinal, duracaoMs } = tentativa;
+    const conteudoRedator = await rodarEtapa<{ legenda: string; hashtags: string[]; cta: string }>(
+      "redator",
+      item.empresaId,
+      "Escrever legenda, hashtags e CTA",
+      () =>
+        gerarJson(
+          subagentes.redator.prompt,
+          `${contexto}\n\nÂngulo definido pelo Estrategista de Conteúdo:\n${angulo}\n\nEscreva a legenda final, as hashtags e o CTA.`,
+          {
+            type: "OBJECT",
+            properties: {
+              legenda: { type: "STRING" },
+              hashtags: { type: "ARRAY", items: { type: "STRING" } },
+              cta: { type: "STRING" },
+            },
+            required: ["legenda", "hashtags", "cta"],
+          },
+        ),
+    );
 
-  if (!resultadoFinal) {
+    let promptImagem: string | undefined;
+    let roteiroVideo: string | undefined;
+
+    if (precisaArte) {
+      const conteudoArte = await rodarEtapa<{ promptImagem: string }>(
+        "diretor-arte",
+        item.empresaId,
+        "Gerar prompt descritivo de imagem",
+        () =>
+          gerarJson(
+            subagentes["diretor-arte"].prompt,
+            `${contexto}\n\nÂngulo: ${angulo}\n\nLegenda: ${conteudoRedator.legenda}\n\nDescreva a peça visual (fotorrealista, com pessoas/natureza/ambientes reais quando fizer sentido para o nicho) e gere o prompt descritivo em inglês.`,
+            {
+              type: "OBJECT",
+              properties: { promptImagem: { type: "STRING" } },
+              required: ["promptImagem"],
+            },
+          ),
+      );
+      promptImagem = conteudoArte.promptImagem;
+    }
+
+    if (precisaVideo) {
+      roteiroVideo = await rodarEtapa("diretor-video", item.empresaId, "Gerar roteiro de vídeo", () =>
+        gerarTexto(
+          subagentes["diretor-video"].prompt,
+          `${contexto}\n\nÂngulo: ${angulo}\n\nLegenda: ${conteudoRedator.legenda}\n\nEscreva o roteiro do vídeo/reels.`,
+        ),
+      );
+    }
+
+    const revisao = await rodarEtapa<{
+      aprovado: boolean;
+      observacoes: string;
+      legendaFinal: string;
+      hashtagsFinal: string[];
+      ctaFinal: string;
+    }>("revisor-marca", item.empresaId, "Revisar conteúdo final contra guidelines", () =>
+      gerarJson(
+        subagentes["revisor-marca"].prompt,
+        `${contexto}\n\nConteúdo final produzido:\nLegenda: ${conteudoRedator.legenda}\nHashtags: ${conteudoRedator.hashtags.join(" ")}\nCTA: ${conteudoRedator.cta}\n${promptImagem ? `Prompt de imagem: ${promptImagem}\n` : ""}${roteiroVideo ? `Roteiro de vídeo: ${roteiroVideo}\n` : ""}\nValide se está alinhado às guidelines. Se precisar de ajustes, já aplique-os e devolva a versão final corrigida.`,
+        {
+          type: "OBJECT",
+          properties: {
+            aprovado: { type: "BOOLEAN" },
+            observacoes: { type: "STRING" },
+            legendaFinal: { type: "STRING" },
+            hashtagsFinal: { type: "ARRAY", items: { type: "STRING" } },
+            ctaFinal: { type: "STRING" },
+          },
+          required: ["aprovado", "observacoes", "legendaFinal", "hashtagsFinal", "ctaFinal"],
+        },
+      ),
+    );
+
+    const estruturado: ConteudoEstruturado = {
+      legenda: revisao.legendaFinal,
+      hashtags: revisao.hashtagsFinal,
+      cta: revisao.ctaFinal,
+      promptImagem,
+      roteiroVideo,
+      aprovado: revisao.aprovado,
+      observacoesRevisor: revisao.observacoes,
+    };
+
     await prisma.execucaoAgente.create({
       data: {
         agente: "CEO",
         empresaId: item.empresaId,
         entrada: { calendarioItemId, tipoPost: item.tipoPost, briefing: item.briefing },
-        saida: { erro: "Nenhuma mensagem de resultado recebida do SDK" },
-        duracaoMs,
-        status: "erro",
-      },
-    });
-    throw new Error("O Agente CEO não retornou um resultado final");
-  }
-
-  for (const exec of subExecucoes.values()) {
-    await prisma.execucaoAgente.create({
-      data: {
-        agente: NOMES_EXIBICAO[exec.subagentType] ?? exec.subagentType,
-        empresaId: item.empresaId,
-        entrada: { descricao: exec.descricao ?? null },
-        saida: { texto: exec.saida },
-        duracaoMs: Math.max(exec.fimMs - exec.inicioMs, 0),
+        saida: { estruturado },
+        duracaoMs: Date.now() - inicioGeral,
         status: "sucesso",
       },
     });
-  }
 
-  if (resultadoFinal.subtype !== "success") {
+    const conteudo = await prisma.conteudo.create({
+      data: {
+        calendarioId: item.id,
+        texto: estruturado.legenda,
+        midiaUrls: [],
+        metadata: estruturado as unknown as Prisma.InputJsonValue,
+      },
+    });
+
+    if (precisaArte && promptImagem) {
+      const midiaUrl = await gerarImagemDoPost(conteudo.id, promptImagem);
+      if (midiaUrl) {
+        await prisma.conteudo.update({ where: { id: conteudo.id }, data: { midiaUrls: { push: midiaUrl } } });
+      }
+    }
+
+    await prisma.calendarioItem.update({
+      where: { id: item.id },
+      data: { status: "aguardando_aprovacao" },
+    });
+
+    return { conteudo, execucoes: precisaArte || precisaVideo ? 5 : 4 };
+  } catch (erro) {
     await prisma.execucaoAgente.create({
       data: {
         agente: "CEO",
         empresaId: item.empresaId,
         entrada: { calendarioItemId, tipoPost: item.tipoPost, briefing: item.briefing },
-        saida: { erro: resultadoFinal.errors },
-        duracaoMs: resultadoFinal.duration_ms,
+        saida: { erro: erro instanceof Error ? erro.message : String(erro) },
+        duracaoMs: Date.now() - inicioGeral,
         status: "erro",
       },
     });
-    throw new Error(`Execução do Agente CEO falhou: ${resultadoFinal.subtype}`);
+    throw erro;
+  } finally {
+    marcarInativo("CEO");
   }
-
-  const estruturado = resultadoFinal.structured_output as ConteudoEstruturado | undefined;
-
-  await prisma.execucaoAgente.create({
-    data: {
-      agente: "CEO",
-      empresaId: item.empresaId,
-      entrada: { calendarioItemId, tipoPost: item.tipoPost, briefing: item.briefing },
-      saida: { resultado: resultadoFinal.result, estruturado: estruturado ?? null },
-      custoTokens: resultadoFinal.usage.input_tokens + resultadoFinal.usage.output_tokens,
-      duracaoMs: resultadoFinal.duration_ms,
-      status: "sucesso",
-    },
-  });
-
-  const conteudo = await prisma.conteudo.create({
-    data: {
-      calendarioId: item.id,
-      texto: estruturado?.legenda ?? resultadoFinal.result,
-      midiaUrls: [],
-      metadata: (estruturado ?? {}) as unknown as Prisma.InputJsonValue,
-    },
-  });
-
-  await prisma.calendarioItem.update({
-    where: { id: item.id },
-    data: { status: "aguardando_aprovacao" },
-  });
-
-  return {
-    conteudo,
-    execucoes: subExecucoes.size + 1,
-    custoUsd: resultadoFinal.total_cost_usd,
-  };
 }

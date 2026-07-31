@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { EmpresaAvatar } from "./EmpresaAvatar";
 import { EditarPostagemModal } from "./EditarPostagemModal";
-import type { CalendarioItem } from "@/lib/api";
+import { excluirCalendarioItem, type CalendarioItem } from "@/lib/api";
 
 const STATUS_LABEL: Record<string, string> = {
   planejado: "Planejado",
@@ -46,7 +47,21 @@ function formatarDataHoraBR(iso: string): string {
 }
 
 export function CalendarioTable({ itens }: { itens: CalendarioItem[] }) {
+  const router = useRouter();
   const [editando, setEditando] = useState<CalendarioItem | null>(null);
+  const [excluindoId, setExcluindoId] = useState<string | null>(null);
+
+  async function excluir(item: CalendarioItem) {
+    if (!window.confirm("Excluir esta postagem agendada? Essa ação não pode ser desfeita.")) return;
+    setExcluindoId(item.id);
+    const resultado = await excluirCalendarioItem(item.id);
+    setExcluindoId(null);
+    if (!resultado.ok) {
+      window.alert(resultado.erro ?? "Não foi possível excluir.");
+      return;
+    }
+    router.refresh();
+  }
 
   return (
     <div className="overflow-hidden rounded-xl border border-border">
@@ -63,11 +78,15 @@ export function CalendarioTable({ itens }: { itens: CalendarioItem[] }) {
         </thead>
         <tbody>
           {itens.map((item) => {
-            const estilo = STATUS_ESTILO[item.status] ?? STATUS_ESTILO.planejado;
             const conteudo = item.conteudos?.[0];
             const publicacaoErro = conteudo?.publicacoes.find((p) => p.status === "erro");
             const publicacaoOk = conteudo?.publicacoes.find((p) => p.status === "publicado");
+            // Publicado é o estado mais definitivo — se já saiu de verdade, ele manda na
+            // exibição, independente do status (bruto) que o CalendarioItem ainda carrega.
+            const statusEfetivo = publicacaoOk ? "publicado" : item.status;
+            const estilo = STATUS_ESTILO[statusEfetivo] ?? STATUS_ESTILO.planejado;
             const assunto = item.briefing?.trim() || conteudo?.texto?.slice(0, 80) || "—";
+            const podeExcluir = !publicacaoOk && item.status !== "aprovado" && item.status !== "publicado";
 
             return (
               <tr
@@ -92,18 +111,15 @@ export function CalendarioTable({ itens }: { itens: CalendarioItem[] }) {
                 </td>
                 <td className="px-4 py-3">
                   <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${estilo.badge}`}>
-                    {STATUS_LABEL[item.status] ?? item.status}
+                    {STATUS_LABEL[statusEfetivo] ?? statusEfetivo}
                   </span>
-                  {publicacaoOk?.externalPostId && (
-                    <div className="mt-1 text-xs text-green-400">✓ publicado</div>
-                  )}
-                  {publicacaoErro && (
+                  {!publicacaoOk && publicacaoErro && (
                     <div className="mt-1 max-w-[16rem] truncate text-xs text-red-400" title={publicacaoErro.log ?? ""}>
                       {publicacaoErro.log ?? "Falha ao publicar"}
                     </div>
                   )}
                 </td>
-                <td className="px-4 py-3 text-right">
+                <td className="px-4 py-3 text-right whitespace-nowrap">
                   <button
                     type="button"
                     onClick={() => setEditando(item)}
@@ -111,6 +127,16 @@ export function CalendarioTable({ itens }: { itens: CalendarioItem[] }) {
                   >
                     Editar
                   </button>
+                  {podeExcluir && (
+                    <button
+                      type="button"
+                      onClick={() => excluir(item)}
+                      disabled={excluindoId === item.id}
+                      className="rounded-lg px-2 py-1 text-xs text-gray-400 hover:bg-panel hover:text-red-400 disabled:opacity-50"
+                    >
+                      {excluindoId === item.id ? "Excluindo..." : "Excluir"}
+                    </button>
+                  )}
                 </td>
               </tr>
             );

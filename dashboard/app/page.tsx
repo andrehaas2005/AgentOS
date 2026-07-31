@@ -4,7 +4,7 @@ import { StatTile } from "@/components/StatTile";
 import { EventFeed } from "@/components/EventFeed";
 import { EmpresaCard } from "@/components/EmpresaCard";
 import { EscritorioAgentes } from "@/components/escritorio/EscritorioAgentes";
-import { SelectFiltro } from "@/components/SelectFiltro";
+import { SelectFiltroEmpresa } from "@/components/SelectFiltroEmpresa";
 import { getStats, getEventos, getEmpresas } from "@/lib/api";
 
 export default async function DashboardPage({
@@ -32,12 +32,7 @@ export default async function DashboardPage({
             </span>
             <h1 className="text-xl font-semibold text-white">AgentOS — Mission Control</h1>
           </div>
-          <SelectFiltro
-            paramName="empresaId"
-            label="Empresa"
-            placeholder="Todas as empresas"
-            opcoes={empresas.map((e) => ({ value: e.id, label: e.nome }))}
-          />
+          <SelectFiltroEmpresa empresas={empresas} />
         </header>
 
         <section className="mb-6 flex flex-wrap gap-4">

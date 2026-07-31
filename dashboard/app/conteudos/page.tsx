@@ -1,5 +1,6 @@
 import { Sidebar } from "@/components/Sidebar";
 import { SelectFiltro } from "@/components/SelectFiltro";
+import { SelectFiltroEmpresa } from "@/components/SelectFiltroEmpresa";
 import { ConteudosView } from "@/components/ConteudosView";
 import { getConteudos, getEmpresas } from "@/lib/api";
 
@@ -31,12 +32,7 @@ export default async function ConteudosPage({
         <div className="mb-6 flex items-center justify-between">
           <h1 className="text-xl font-semibold text-white">Conteúdos Gerados</h1>
           <div className="flex items-center gap-3">
-            <SelectFiltro
-              paramName="empresaId"
-              label="Empresa"
-              placeholder="Todas"
-              opcoes={empresas.map((e) => ({ value: e.id, label: e.nome }))}
-            />
+            <SelectFiltroEmpresa empresas={empresas} />
             <SelectFiltro paramName="tipoPost" label="Tipo" placeholder="Todos" opcoes={TIPO_OPCOES} />
           </div>
         </div>

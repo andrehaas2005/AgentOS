@@ -56,6 +56,22 @@ calendarioRouter.patch("/:id", async (req, res) => {
   res.json(item);
 });
 
+calendarioRouter.delete("/:id", async (req, res) => {
+  const item = await prisma.calendarioItem.findUnique({
+    where: { id: req.params.id },
+    include: { conteudos: { include: { publicacoes: true } } },
+  });
+  if (!item) return res.status(404).json({ error: "Item de calendário não encontrado" });
+
+  const jaPublicado = item.conteudos.some((c) => c.publicacoes.some((p) => p.status === "publicado"));
+  if (jaPublicado) {
+    return res.status(409).json({ error: "Não é possível excluir uma postagem que já foi publicada." });
+  }
+
+  await prisma.calendarioItem.delete({ where: { id: req.params.id } });
+  res.status(204).send();
+});
+
 calendarioRouter.post("/:id/executar", async (req, res) => {
   try {
     const resultado = await executarAgenteCeo(req.params.id);

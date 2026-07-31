@@ -287,6 +287,19 @@ export async function atualizarCalendarioItem(
   return { ok: resultado.ok, erro: resultado.erro };
 }
 
+export async function excluirCalendarioItem(id: string): Promise<{ ok: boolean; erro?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/api/calendario/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const corpo = await res.json().catch(() => null);
+      return { ok: false, erro: corpo?.error ?? "Não foi possível excluir." };
+    }
+    return { ok: true };
+  } catch {
+    return { ok: false, erro: "Falha de conexão com o backend." };
+  }
+}
+
 export function getConteudos(empresaId?: string, tipoPost?: string) {
   return safeFetch<Conteudo[]>(`/api/conteudos${qs({ empresaId, tipoPost })}`, []);
 }

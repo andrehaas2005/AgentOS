@@ -1,5 +1,5 @@
 import { Sidebar } from "@/components/Sidebar";
-import { SelectFiltro } from "@/components/SelectFiltro";
+import { SelectFiltroEmpresa } from "@/components/SelectFiltroEmpresa";
 import { getAgentesStats, getEmpresas } from "@/lib/api";
 import { AGENTES } from "@/lib/agentes";
 
@@ -27,12 +27,7 @@ export default async function AgentesPage({
       <main className="flex-1 p-6">
         <div className="mb-6 flex items-center justify-between">
           <h1 className="text-xl font-semibold text-white">Agentes</h1>
-          <SelectFiltro
-            paramName="empresaId"
-            label="Empresa"
-            placeholder="Todas"
-            opcoes={empresas.map((e) => ({ value: e.id, label: e.nome }))}
-          />
+          <SelectFiltroEmpresa empresas={empresas} />
         </div>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {AGENTES.map((agente) => {

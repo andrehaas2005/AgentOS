@@ -41,7 +41,10 @@ services:
     build:
       context: ./dashboard
       args:
-        NEXT_PUBLIC_API_URL: http://agentos-backend:4000
+        # Vazio de propósito: nginx expõe / (dashboard) e /api (backend) na mesma origem,
+        # então o navegador deve chamar a API por caminho relativo — nunca o hostname
+        # interno do Docker (agentos-backend), que só existe dentro da rede do compose.
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-}
         NEXT_PUBLIC_PUBLICAR_BASIC: ${NEXT_PUBLIC_PUBLICAR_BASIC:-}
     environment:
       INTERNAL_API_URL: http://agentos-backend:4000

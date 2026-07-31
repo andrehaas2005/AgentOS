@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AGENTES, SPRITE_POR_AGENTE } from "@/lib/agentes";
 import { fraseAleatoria } from "@/lib/frasesCopa";
 import { getAgentesStatus, type StatusAtivo } from "@/lib/api";
@@ -59,6 +59,13 @@ export function EscritorioAgentes() {
 
   const ativoPorNome = new Map(ativos.map((ativo) => [ativo.agente, ativo]));
 
+  // Ref pra o intervalo de passeio (6s) ler sempre quem está ativo agora sem
+  // precisar reiniciar a cada 4s (quando o polling de status muda `ativos`) —
+  // um intervalo de período maior que o do polling nunca dispararia se
+  // dependesse de `ativos` diretamente no array de dependências do efeito.
+  const ativoPorNomeRef = useRef(ativoPorNome);
+  ativoPorNomeRef.current = ativoPorNome;
+
   useEffect(() => {
     const id = setInterval(() => {
       setFalasOciosos((prev) => {
@@ -92,7 +99,7 @@ export function EscritorioAgentes() {
           const nome = agente.nome;
           const pos = POSICOES[nome];
           if (!pos) continue;
-          if (ativoPorNome.has(nome)) {
+          if (ativoPorNomeRef.current.has(nome)) {
             delete proximo[nome];
             continue;
           }
@@ -104,8 +111,7 @@ export function EscritorioAgentes() {
       });
     }, 6000);
     return () => clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ativos]);
+  }, []);
 
   function falaPara(nome: string, ativo: StatusAtivo | undefined): string | undefined {
     if (ativo) {

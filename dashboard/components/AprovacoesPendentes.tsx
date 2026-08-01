@@ -67,7 +67,7 @@ export function AprovacoesPendentes({ empresaId }: { empresaId?: string }) {
   }
 
   return (
-    <aside className="w-80 shrink-0 rounded-xl border border-border bg-panel p-4">
+    <aside className="w-full shrink-0 rounded-xl border border-border bg-panel p-4 lg:w-80">
       <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-white">
         <Bell size={14} className="text-amber-400" />
         Aguardando Aprovação

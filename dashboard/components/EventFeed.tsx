@@ -13,7 +13,7 @@ function tempoRelativo(iso: string) {
 
 export function EventFeed({ eventos }: { eventos: ExecucaoAgente[] }) {
   return (
-    <aside className="w-80 shrink-0 rounded-xl border border-border bg-panel p-4">
+    <aside className="w-full shrink-0 rounded-xl border border-border bg-panel p-4 lg:w-80">
       <h2 className="mb-3 text-sm font-semibold text-white">Feed de Eventos</h2>
       {eventos.length === 0 && (
         <p className="text-sm text-gray-500">Nenhuma execução de agente registrada ainda.</p>

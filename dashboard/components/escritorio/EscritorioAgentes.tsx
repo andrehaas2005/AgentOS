@@ -47,7 +47,7 @@ function pontoProximo(base: { x: number; y: number }): { x: number; y: number } 
 
 type Fala = { texto: string; expira: number };
 
-export function EscritorioAgentes() {
+export function EscritorioAgentes({ altura = "h-[320px]" }: { altura?: string }) {
   const [ativos, setAtivos] = useState<StatusAtivo[]>([]);
   const [frases, setFrases] = useState<FraseOciosa[]>([]);
   const [falasOciosos, setFalasOciosos] = useState<Record<string, Fala>>({});
@@ -180,7 +180,7 @@ export function EscritorioAgentes() {
   const agenteSelecionado = selecionado ? ativoPorNome.get(selecionado) : undefined;
 
   return (
-    <div className="relative h-[320px] w-full overflow-hidden rounded-lg border border-border bg-surface">
+    <div className={`relative ${altura} w-full overflow-hidden rounded-lg border border-border bg-surface`}>
       {/* faixa de parede no topo, cobrindo as duas salas */}
       <div
         className="absolute inset-x-0 top-0 z-0 h-6"

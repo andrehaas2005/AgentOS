@@ -13,17 +13,21 @@ const NAV_ITEMS = [
   { href: "/agentes", label: "Agentes", icon: Bot },
 ];
 
-export function Sidebar() {
+const CLASSE_DESKTOP = "hidden w-56 shrink-0 flex-col gap-1 border-r border-border bg-panel p-3 md:flex";
+const CLASSE_MOBILE = "flex w-full flex-col gap-1";
+
+export function Sidebar({ mobile, onNavigate }: { mobile?: boolean; onNavigate?: () => void }) {
   const pathname = usePathname();
 
   return (
-    <aside className="hidden w-56 shrink-0 flex-col gap-1 border-r border-border bg-panel p-3 md:flex">
+    <aside className={mobile ? CLASSE_MOBILE : CLASSE_DESKTOP}>
       {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
         const active = pathname === href;
         return (
           <Link
             key={href}
             href={href}
+            onClick={onNavigate}
             className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${
               active ? "bg-surface text-white" : "text-gray-400 hover:bg-surface/60 hover:text-white"
             }`}

@@ -50,7 +50,7 @@ export function ConteudosView({ conteudos }: { conteudos: Conteudo[] }) {
       </div>
 
       {visualizacao === "lista" ? (
-        <div className="overflow-hidden rounded-xl border border-border">
+        <div className="overflow-x-auto rounded-xl border border-border">
           <table className="w-full text-left text-sm">
             <thead className="bg-panel text-gray-400">
               <tr>

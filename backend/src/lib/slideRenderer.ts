@@ -19,8 +19,8 @@ const TAMANHO = 1080;
 const PASTA_MIDIA = path.join(__dirname, "../../uploads/conteudos");
 fs.mkdirSync(PASTA_MIDIA, { recursive: true });
 
-const FONTE_REGULAR = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf";
-const FONTE_BOLD = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf";
+const FONTE_REGULAR = "/usr/share/fonts/dejavu/DejaVuSans.ttf";
+const FONTE_BOLD = "/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf";
 let fontesRegistradas = false;
 
 function garantirFontes() {

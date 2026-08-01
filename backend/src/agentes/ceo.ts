@@ -145,6 +145,11 @@ export async function executarAgenteCeo(calendarioItemId: string) {
         ),
     );
 
+    // Defensivo: os provedores de fallback (OpenAI/Anthropic) não têm enforcement real
+    // de schema como o Gemini — se o modelo esquecer um campo, evita que isso derrube o
+    // pipeline inteiro mais adiante (ex: .join() num hashtags undefined).
+    conteudoRedator.hashtags = conteudoRedator.hashtags ?? [];
+
     let promptImagem: string | undefined;
     let roteiroVideo: string | undefined;
 
@@ -202,7 +207,7 @@ export async function executarAgenteCeo(calendarioItemId: string) {
 
     const estruturado: ConteudoEstruturado = {
       legenda: revisao.legendaFinal,
-      hashtags: revisao.hashtagsFinal,
+      hashtags: revisao.hashtagsFinal ?? conteudoRedator.hashtags,
       cta: revisao.ctaFinal,
       promptImagem,
       roteiroVideo,

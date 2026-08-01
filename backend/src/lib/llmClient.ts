@@ -45,7 +45,12 @@ export async function gerarJson<T>(
   } catch (erroGemini) {
     if (!ehErroDeCota(erroGemini)) throw erroGemini;
     console.warn("Gemini sem cota, tentando OpenAI...", erroGemini);
-    const schemaDescricao = JSON.stringify(schema);
+    const camposObrigatorios = Array.isArray((schema as { required?: unknown }).required)
+      ? (schema.required as string[]).join(", ")
+      : "";
+    const schemaDescricao = `${JSON.stringify(schema)}${
+      camposObrigatorios ? ` — TODOS os campos obrigatórios (${camposObrigatorios}) devem estar presentes na resposta, mesmo que vazios.` : ""
+    }`;
     try {
       return await gerarJsonOpenAI<T>(systemPrompt, prompt, schemaDescricao);
     } catch (erroOpenai) {

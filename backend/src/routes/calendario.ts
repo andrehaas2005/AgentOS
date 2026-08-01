@@ -97,9 +97,14 @@ calendarioRouter.post("/:id/recalcular-status", async (req, res) => {
 
 calendarioRouter.post("/:id/executar", async (req, res) => {
   try {
+    await prisma.calendarioItem.update({ where: { id: req.params.id }, data: { ultimoErro: null } }).catch(() => {});
     const resultado = await executarAgenteCeo(req.params.id);
     res.status(200).json(resultado);
   } catch (error) {
-    res.status(500).json({ error: error instanceof Error ? error.message : "Erro desconhecido" });
+    const mensagem = error instanceof Error ? error.message : "Erro desconhecido";
+    await prisma.calendarioItem
+      .update({ where: { id: req.params.id }, data: { status: "erro", ultimoErro: mensagem } })
+      .catch(() => {});
+    res.status(500).json({ error: mensagem });
   }
 });

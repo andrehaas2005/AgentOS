@@ -24,7 +24,7 @@ async function gerarConteudoAntecipado() {
     // o mesmo item duas vezes.
     const reivindicado = await prisma.calendarioItem.updateMany({
       where: { id: item.id, status: "planejado" },
-      data: { status: "em_producao" },
+      data: { status: "em_producao", ultimoErro: null },
     });
     if (reivindicado.count === 0) continue;
 
@@ -39,7 +39,10 @@ async function gerarConteudoAntecipado() {
       }
     } catch (erro) {
       console.error(`Execução automática falhou para o item de calendário ${item.id}:`, erro);
-      await prisma.calendarioItem.update({ where: { id: item.id }, data: { status: "erro" } }).catch(() => {});
+      const mensagem = erro instanceof Error ? erro.message : String(erro);
+      await prisma.calendarioItem
+        .update({ where: { id: item.id }, data: { status: "erro", ultimoErro: mensagem } })
+        .catch(() => {});
     }
   }
 }
@@ -62,7 +65,7 @@ async function publicarAprovadosNoHorario() {
 
     const reivindicado = await prisma.calendarioItem.updateMany({
       where: { id: item.id, status: "aprovado" },
-      data: { status: "publicando" },
+      data: { status: "publicando", ultimoErro: null },
     });
     if (reivindicado.count === 0) continue;
 
@@ -83,7 +86,10 @@ async function publicarAprovadosNoHorario() {
       await publicarConteudoAprovado(conteudo.id);
     } catch (erro) {
       console.error(`Publicação agendada falhou para o item de calendário ${item.id}:`, erro);
-      await prisma.calendarioItem.update({ where: { id: item.id }, data: { status: "erro" } }).catch(() => {});
+      const mensagem = erro instanceof Error ? erro.message : String(erro);
+      await prisma.calendarioItem
+        .update({ where: { id: item.id }, data: { status: "erro", ultimoErro: mensagem } })
+        .catch(() => {});
     }
   }
 }

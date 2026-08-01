@@ -76,6 +76,7 @@ model CalendarioItem {
   status              StatusCalendario  @default(planejado)
   aprovacaoAutomatica Boolean           @default(false) @map("aprovacao_automatica")
   redesAlvo           RedeSocial[]      @default([]) @map("redes_alvo")
+  ultimoErro          String?           @map("ultimo_erro")
   createdAt           DateTime          @default(now()) @map("created_at")
 
   conteudos Conteudo[]

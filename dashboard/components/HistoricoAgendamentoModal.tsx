@@ -76,6 +76,17 @@ export function HistoricoAgendamentoModal({
           </div>
         )}
 
+        {item.status === "erro" && item.ultimoErro && (
+          <div className="mb-4">
+            <p className="mb-1 text-[11px] uppercase tracking-wide text-gray-500">
+              Erro na geração do conteúdo
+            </p>
+            <pre className="max-h-52 overflow-y-auto whitespace-pre-wrap break-words rounded-md bg-black/30 p-2 text-[11px] leading-relaxed text-red-300">
+              {item.ultimoErro}
+            </pre>
+          </div>
+        )}
+
         <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
           Histórico de publicação
         </h4>

@@ -29,6 +29,11 @@ export async function dispararTurnoChat<TMudancas>(opcoes: {
   if (!skill) throw new Error(`Skill "${skillChave}" não encontrada.`);
 
   const systemPrompt = `${skill.prompt}\n\n${contextoSistema}`;
+  // A API do Gemini exige pelo menos uma mensagem em "contents" — no primeiro turno (antes
+  // do usuário digitar qualquer coisa) o histórico ainda está vazio, então injeta um turno
+  // inicial sintético só pra abrir a conversa e deixar a IA decidir a primeira pergunta.
+  const mensagensParaEnvio: MensagemChat[] =
+    mensagens.length > 0 ? mensagens : [{ role: "user", content: "Quero recriar este item. Pode começar?" }];
   const inicio = Date.now();
   marcarAtivo(agenteExibicao, "Conversando sobre uma mudança");
   try {
@@ -39,7 +44,7 @@ export async function dispararTurnoChat<TMudancas>(opcoes: {
       mudancas?: TMudancas;
     }>(
       systemPrompt,
-      mensagens,
+      mensagensParaEnvio,
       {
         type: "OBJECT",
         properties: {

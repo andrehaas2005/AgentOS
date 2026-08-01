@@ -23,6 +23,7 @@ services:
       DATABASE_URL: postgresql://agentos:${POSTGRES_PASSWORD:-agentos}@agentos-postgres:5432/agentos
       PORT: 4000
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
       GEMINI_API_KEY: ${GEMINI_API_KEY}
       REPLICATE_API_TOKEN: ${REPLICATE_API_TOKEN}
       PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost}

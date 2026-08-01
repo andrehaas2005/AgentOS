@@ -96,10 +96,10 @@ export function CalendarioTable({
             const conteudo = item.conteudos?.[0];
             const publicacaoErro = conteudo?.publicacoes.find((p) => p.status === "erro");
             const publicacaoOk = conteudo?.publicacoes.find((p) => p.status === "publicado");
-            // Publicado é o estado mais definitivo — se já saiu de verdade, ele manda na
-            // exibição, independente do status (bruto) que o CalendarioItem ainda carrega.
-            const statusEfetivo = publicacaoOk ? "publicado" : item.status;
-            const estilo = STATUS_ESTILO[statusEfetivo] ?? STATUS_ESTILO.planejado;
+            // O backend já é a fonte de verdade do status (atualizarStatusAposPublicacao
+            // só marca "publicado" quando TODA rede conectada publicou) — exibir o status
+            // bruto direto, sem sobrepor com base numa publicação parcial.
+            const estilo = STATUS_ESTILO[item.status] ?? STATUS_ESTILO.planejado;
             const assunto = item.briefing?.trim() || conteudo?.texto?.slice(0, 80) || "—";
             const podeExcluir =
               !publicacaoOk &&
@@ -130,11 +130,14 @@ export function CalendarioTable({
                 </td>
                 <td className="px-4 py-3">
                   <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${estilo.badge}`}>
-                    {STATUS_LABEL[statusEfetivo] ?? statusEfetivo}
+                    {STATUS_LABEL[item.status] ?? item.status}
                   </span>
-                  {!publicacaoOk && publicacaoErro && (
+                  {publicacaoOk && (
+                    <div className="mt-1 text-xs text-green-400">✓ Publicado em {publicacaoOk.rede}</div>
+                  )}
+                  {publicacaoErro && (
                     <div className="mt-1 max-w-[16rem] truncate text-xs text-red-400" title={publicacaoErro.log ?? ""}>
-                      {publicacaoErro.log ?? "Falha ao publicar"}
+                      Falha em {publicacaoErro.rede}: {publicacaoErro.log ?? "erro desconhecido"}
                     </div>
                   )}
                 </td>

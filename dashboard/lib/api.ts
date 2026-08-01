@@ -146,6 +146,12 @@ export type AgenteStats = {
   ultimaExecucao: { status: string; createdAt: string } | null;
 };
 
+export type AgenteDefinicao = {
+  nome: string;
+  descricao: string;
+  prompt: string | null;
+};
+
 export type DashboardStats = {
   empresas: number;
   agentesConfigurados: number;
@@ -355,6 +361,10 @@ export async function aprovarConteudo(
 
 export function getAgentesStats(empresaId?: string) {
   return safeFetch<AgenteStats[]>(`/api/agentes${qs({ empresaId })}`, []);
+}
+
+export function getAgentesDefinicoes() {
+  return safeFetch<AgenteDefinicao[]>("/api/agentes/definicoes", []);
 }
 
 export function getAgenteTimeline(nome: string) {

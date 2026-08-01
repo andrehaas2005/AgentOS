@@ -1,8 +1,30 @@
 import { Router } from "express";
 import { prisma } from "../db";
 import { obterAtivos } from "../agentes/status";
+import { NOMES_EXIBICAO, subagentes } from "../agentes/definicoes";
 
 export const agentesRouter = Router();
+
+// CEO e Publicador não têm prompt de LLM — o CEO orquestra (código determinístico) e o
+// Publicador só chama as APIs das redes — por isso ficam com "prompt: null" aqui.
+const FUNCAO_SEM_PROMPT: Record<string, string> = {
+  CEO: "Orquestra o time: decide a ordem das etapas, dispara cada subagente e decide o que produzir/publicar. Não usa prompt de LLM fixo — a lógica de orquestração é código determinístico.",
+  Publicador: "Publica o conteúdo aprovado na rede certa (Instagram, LinkedIn) chamando as APIs de cada rede diretamente. Não usa prompt de LLM — é uma ação determinística de código.",
+};
+
+agentesRouter.get("/definicoes", (_req, res) => {
+  const doPipeline = Object.entries(subagentes).map(([id, def]) => ({
+    nome: NOMES_EXIBICAO[id] ?? id,
+    descricao: def.description,
+    prompt: def.prompt,
+  }));
+  const semPrompt = Object.entries(FUNCAO_SEM_PROMPT).map(([nome, descricao]) => ({
+    nome,
+    descricao,
+    prompt: null,
+  }));
+  res.json([semPrompt[0], ...doPipeline, semPrompt[1]]);
+});
 
 agentesRouter.get("/status", (_req, res) => {
   const ativos = Array.from(obterAtivos().entries()).map(([agente, info]) => ({

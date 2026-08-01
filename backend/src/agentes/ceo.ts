@@ -4,7 +4,8 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "../db";
 import { NOMES_EXIBICAO, subagentes } from "./definicoes";
 import { marcarAtivo, marcarInativo } from "./status";
-import { gerarTexto, gerarJson, gerarImagem } from "../lib/geminiClient";
+import { gerarImagem } from "../lib/geminiClient";
+import { gerarTexto, gerarJson } from "../lib/llmClient";
 import { gerarImagemReplicate } from "../lib/replicateClient";
 
 const TIPOS_QUE_PRECISAM_ARTE = new Set(["imagem_frase", "carrossel", "stories"]);

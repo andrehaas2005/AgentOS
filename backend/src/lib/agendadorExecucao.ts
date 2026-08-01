@@ -39,6 +39,7 @@ async function gerarConteudoAntecipado() {
       }
     } catch (erro) {
       console.error(`Execução automática falhou para o item de calendário ${item.id}:`, erro);
+      await prisma.calendarioItem.update({ where: { id: item.id }, data: { status: "erro" } }).catch(() => {});
     }
   }
 }

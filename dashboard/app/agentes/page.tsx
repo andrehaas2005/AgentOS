@@ -1,6 +1,7 @@
 import { Sidebar } from "@/components/Sidebar";
 import { SelectFiltroEmpresa } from "@/components/SelectFiltroEmpresa";
 import { FrasesOciosasManager } from "@/components/FrasesOciosasManager";
+import { SkillsAgentes } from "@/components/SkillsAgentes";
 import { getAgentesStats, getEmpresas } from "@/lib/api";
 import { AGENTES } from "@/lib/agentes";
 
@@ -49,7 +50,8 @@ export default async function AgentesPage({
           })}
         </div>
 
-        <div className="mt-6">
+        <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <SkillsAgentes />
           <FrasesOciosasManager />
         </div>
       </main>

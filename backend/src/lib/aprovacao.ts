@@ -1,6 +1,6 @@
 import { prisma } from "../db";
 import { marcarAtivo, marcarInativo } from "../agentes/status";
-import { gerarTexto } from "./geminiClient";
+import { gerarTexto } from "./llmClient";
 import { publicarConteudoNoInstagram } from "./publicarInstagram";
 import { publicarConteudoNoLinkedin } from "./publicarLinkedin";
 

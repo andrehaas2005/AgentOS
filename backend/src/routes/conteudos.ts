@@ -162,6 +162,7 @@ conteudosRouter.post("/:id/midia/recriar", async (req, res) => {
     const turno = await dispararTurnoRecriacaoSlide(req.params.id, parsed.data.indice, parsed.data.mensagens);
     res.json(turno);
   } catch (erro) {
+    console.error("Erro ao recriar slide:", erro);
     res.status(400).json({ error: erro instanceof Error ? erro.message : "Erro inesperado ao recriar o slide." });
   }
 });

@@ -77,6 +77,15 @@ Guidelines de marca da empresa: ${empresa.brandGuidelines ? JSON.stringify(empre
     else if (mudancas.novoPromptFoto !== undefined) slideNovo.promptFoto = mudancas.novoPromptFoto;
   }
 
+  // A IA às vezes devolve tipo "aplicar" com um resumo dizendo que mudou algo, mas o objeto
+  // "mudancas" vem vazio/inválido (ex.: cor fora do formato hex) — sem essa checagem, isso
+  // vira um "sucesso" silencioso que não muda nada de verdade no slide.
+  if (JSON.stringify(slideNovo) === JSON.stringify(slideAtual)) {
+    throw new Error(
+      "O Diretor de Arte não conseguiu aplicar a mudança (resposta inválida). Tente descrever de novo.",
+    );
+  }
+
   const urls = await renderizarCarrosselEducativo(conteudoId, empresa, [slideNovo]);
   const novaUrl = urls[0];
   if (!novaUrl) throw new Error("Não foi possível gerar o slide atualizado.");

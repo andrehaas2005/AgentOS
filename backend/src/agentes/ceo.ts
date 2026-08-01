@@ -4,9 +4,9 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "../db";
 import { NOMES_EXIBICAO, subagentes } from "./definicoes";
 import { marcarAtivo, marcarInativo } from "./status";
-import { gerarImagem } from "../lib/geminiClient";
 import { gerarTexto, gerarJson } from "../lib/llmClient";
-import { gerarImagemReplicate } from "../lib/replicateClient";
+import { gerarUmaImagemBuffer } from "../lib/gerarImagemFallback";
+import { renderizarCarrosselEducativo, type SlideEducativo } from "../lib/slideRenderer";
 
 const TIPOS_QUE_PRECISAM_ARTE = new Set(["imagem_frase", "carrossel", "stories"]);
 const TIPOS_QUE_PRECISAM_VIDEO = new Set(["animacao", "video_curto", "reels"]);
@@ -20,7 +20,7 @@ type ItemComEmpresa = {
   tipoPost: string;
   dataHora: Date;
   briefing: string | null;
-  empresa: { nome: string; nicho: string | null; tomDeVoz: string | null; brandGuidelines: unknown };
+  empresa: { nome: string; nicho: string | null; tomDeVoz: string | null; brandGuidelines: unknown; logoUrl: string | null };
 };
 
 type ConteudoEstruturado = {
@@ -29,6 +29,7 @@ type ConteudoEstruturado = {
   cta: string;
   promptImagem?: string;
   promptImagens?: string[];
+  slidesEducativo?: SlideEducativo[];
   roteiroVideo?: string;
   aprovado: boolean;
   observacoesRevisor: string;
@@ -85,19 +86,14 @@ Data/hora planejada: ${item.dataHora.toISOString()}
 Briefing: ${item.briefing ?? "nenhum briefing específico — use o nicho da empresa como base"}`;
 }
 
-async function gerarUmaImagemBuffer(promptImagem: string): Promise<Buffer | null> {
-  const promptFinal = `${promptImagem}\n\nA imagem deve ser fotorrealista e visualmente atraente (pessoas, natureza, ambientes reais), não um gráfico de texto genérico.`;
-  try {
-    return await gerarImagemReplicate(promptFinal);
-  } catch (erroReplicate) {
-    console.warn(`Geração de imagem via Replicate falhou, tentando Gemini: ${erroReplicate}`);
-    try {
-      return await gerarImagem(promptFinal);
-    } catch (erroGemini) {
-      console.warn(`Geração de imagem via Gemini também falhou (post seguirá sem mídia automática): ${erroGemini}`);
-      return null;
-    }
-  }
+function resumoSlidesEducativo(slides: SlideEducativo[]): string {
+  return `Slides do carrossel educativo (${slides.length}, em ordem):\n${slides
+    .map((s, i) => {
+      if (s.tipo === "passo") return `${i + 1}. [passo] ${s.badge ?? ""} ${s.titulo} — ${s.texto ?? ""}`;
+      if (s.tipo === "capa") return `${i + 1}. [capa] ${s.titulo} — ${(s.bullets ?? []).join(", ")}`;
+      return `${i + 1}. [fechamento] ${s.titulo}`;
+    })
+    .join("\n")}\n`;
 }
 
 async function gerarImagemDoPost(conteudoId: string, promptImagem: string): Promise<string | null> {
@@ -174,28 +170,57 @@ export async function executarAgenteCeo(calendarioItemId: string) {
 
     let promptImagem: string | undefined;
     let promptImagens: string[] | undefined;
+    let slidesEducativo: SlideEducativo[] | undefined;
     let roteiroVideo: string | undefined;
 
     if (item.tipoPost === "carrossel") {
-      const conteudoArte = await rodarEtapa<{ promptImagens: string[] }>(
+      const conteudoArte = await rodarEtapa<{
+        estilo?: string;
+        promptImagens?: string[];
+        slides?: SlideEducativo[];
+      }>(
         "diretor-arte",
         item.empresaId,
-        "Gerar prompts das imagens do carrossel",
+        "Definir estilo e conteúdo visual do carrossel",
         () =>
           gerarJson(
             subagentes["diretor-arte"].prompt,
-            `${contexto}\n\nÂngulo: ${angulo}\n\nLegenda: ${conteudoRedator.legenda}\n\nEste post é um CARROSSEL do Instagram: gere de 3 a 6 prompts de imagem (em inglês, fotorrealistas, com pessoas/ambientes reais quando fizer sentido para o nicho), um por slide, na ordem em que devem aparecer. Juntos eles precisam contar uma ideia/narrativa completa (ex: gancho → contexto/problema → desenvolvimento → solução/prova → CTA visual) — cada slide visualmente diferente do anterior, nunca repetindo a mesma cena.`,
+            `${contexto}\n\nÂngulo: ${angulo}\n\nLegenda: ${conteudoRedator.legenda}\n\nEste post é um CARROSSEL do Instagram. Escolha o estilo ("narrativo" ou "educativo") e produza o conteúdo correspondente.`,
             {
               type: "OBJECT",
-              properties: { promptImagens: { type: "ARRAY", items: { type: "STRING" } } },
-              required: ["promptImagens"],
+              properties: {
+                estilo: { type: "STRING" },
+                promptImagens: { type: "ARRAY", items: { type: "STRING" } },
+                slides: {
+                  type: "ARRAY",
+                  items: {
+                    type: "OBJECT",
+                    properties: {
+                      tipo: { type: "STRING" },
+                      badge: { type: "STRING" },
+                      titulo: { type: "STRING" },
+                      texto: { type: "STRING" },
+                      bullets: { type: "ARRAY", items: { type: "STRING" } },
+                      icone: { type: "STRING" },
+                      promptFoto: { type: "STRING" },
+                    },
+                    required: ["tipo", "titulo"],
+                  },
+                },
+              },
+              required: ["estilo"],
             },
           ),
       );
-      // Defensivo: fallback providers (OpenAI/Anthropic) podem devolver o array vazio.
-      promptImagens = conteudoArte.promptImagens && conteudoArte.promptImagens.length > 0
-        ? conteudoArte.promptImagens
-        : undefined;
+
+      if (conteudoArte.estilo === "educativo" && conteudoArte.slides && conteudoArte.slides.length > 0) {
+        slidesEducativo = conteudoArte.slides;
+      } else {
+        // Defensivo: fallback providers (OpenAI/Anthropic) podem devolver o array vazio.
+        promptImagens = conteudoArte.promptImagens && conteudoArte.promptImagens.length > 0
+          ? conteudoArte.promptImagens
+          : undefined;
+      }
     } else if (precisaArte) {
       const conteudoArte = await rodarEtapa<{ promptImagem: string }>(
         "diretor-arte",
@@ -233,7 +258,7 @@ export async function executarAgenteCeo(calendarioItemId: string) {
     }>("revisor-marca", item.empresaId, "Revisar conteúdo final contra guidelines", () =>
       gerarJson(
         subagentes["revisor-marca"].prompt,
-        `${contexto}\n\nConteúdo final produzido:\nLegenda: ${conteudoRedator.legenda}\nHashtags: ${conteudoRedator.hashtags.join(" ")}\nCTA: ${conteudoRedator.cta}\n${promptImagem ? `Prompt de imagem: ${promptImagem}\n` : ""}${promptImagens ? `Prompts das imagens do carrossel (${promptImagens.length} slides, em ordem):\n${promptImagens.map((p, i) => `${i + 1}. ${p}`).join("\n")}\n` : ""}${roteiroVideo ? `Roteiro de vídeo: ${roteiroVideo}\n` : ""}\nValide se está alinhado às guidelines. Se precisar de ajustes, já aplique-os e devolva a versão final corrigida.`,
+        `${contexto}\n\nConteúdo final produzido:\nLegenda: ${conteudoRedator.legenda}\nHashtags: ${conteudoRedator.hashtags.join(" ")}\nCTA: ${conteudoRedator.cta}\n${promptImagem ? `Prompt de imagem: ${promptImagem}\n` : ""}${promptImagens ? `Prompts das imagens do carrossel (${promptImagens.length} slides, em ordem):\n${promptImagens.map((p, i) => `${i + 1}. ${p}`).join("\n")}\n` : ""}${slidesEducativo ? resumoSlidesEducativo(slidesEducativo) : ""}${roteiroVideo ? `Roteiro de vídeo: ${roteiroVideo}\n` : ""}\nValide se está alinhado às guidelines. Se precisar de ajustes, já aplique-os e devolva a versão final corrigida.`,
         {
           type: "OBJECT",
           properties: {
@@ -254,6 +279,7 @@ export async function executarAgenteCeo(calendarioItemId: string) {
       cta: revisao.ctaFinal,
       promptImagem,
       promptImagens,
+      slidesEducativo,
       roteiroVideo,
       aprovado: revisao.aprovado,
       observacoesRevisor: revisao.observacoes,
@@ -273,7 +299,7 @@ export async function executarAgenteCeo(calendarioItemId: string) {
           const nota = await rodarEtapa(agenteCustom.nome, item.empresaId, `Executando ${agenteCustom.nome}`, () =>
             gerarTexto(
               agenteCustom.prompt,
-              `${contexto}\n\nConteúdo final produzido pelo time:\nLegenda: ${estruturado.legenda}\nHashtags: ${estruturado.hashtags.join(" ")}\nCTA: ${estruturado.cta}\n${promptImagem ? `Prompt de imagem: ${promptImagem}\n` : ""}${promptImagens ? `Prompts das imagens do carrossel (${promptImagens.length} slides):\n${promptImagens.map((p, i) => `${i + 1}. ${p}`).join("\n")}\n` : ""}${roteiroVideo ? `Roteiro de vídeo: ${roteiroVideo}\n` : ""}\nDê sua contribuição conforme a sua função.`,
+              `${contexto}\n\nConteúdo final produzido pelo time:\nLegenda: ${estruturado.legenda}\nHashtags: ${estruturado.hashtags.join(" ")}\nCTA: ${estruturado.cta}\n${promptImagem ? `Prompt de imagem: ${promptImagem}\n` : ""}${promptImagens ? `Prompts das imagens do carrossel (${promptImagens.length} slides):\n${promptImagens.map((p, i) => `${i + 1}. ${p}`).join("\n")}\n` : ""}${slidesEducativo ? resumoSlidesEducativo(slidesEducativo) : ""}${roteiroVideo ? `Roteiro de vídeo: ${roteiroVideo}\n` : ""}\nDê sua contribuição conforme a sua função.`,
             ),
           );
           notas.push({ agente: agenteCustom.nome, nota });
@@ -304,7 +330,12 @@ export async function executarAgenteCeo(calendarioItemId: string) {
       },
     });
 
-    if (promptImagens && promptImagens.length > 0) {
+    if (slidesEducativo && slidesEducativo.length > 0) {
+      const midiaUrls = await renderizarCarrosselEducativo(conteudo.id, item.empresa, slidesEducativo);
+      if (midiaUrls.length > 0) {
+        await prisma.conteudo.update({ where: { id: conteudo.id }, data: { midiaUrls: { push: midiaUrls } } });
+      }
+    } else if (promptImagens && promptImagens.length > 0) {
       const midiaUrls = await gerarImagensCarrossel(conteudo.id, promptImagens);
       if (midiaUrls.length > 0) {
         await prisma.conteudo.update({ where: { id: conteudo.id }, data: { midiaUrls: { push: midiaUrls } } });

@@ -38,8 +38,10 @@ export function ConteudoPreviewCard({ conteudo }: { conteudo: Conteudo }) {
   const mostrarPromptVisual = promptVisual && !temMidia;
 
   const contasSociais = conteudo.calendario.empresa.contasSociais;
-  const temInstagram = contasSociais.some((c) => c.rede === "instagram" && c.status === "conectado");
-  const temLinkedin = contasSociais.some((c) => c.rede === "linkedin" && c.status === "conectado");
+  const redesAlvo = conteudo.calendario.redesAlvo;
+  const alvoInclui = (rede: string) => redesAlvo.length === 0 || redesAlvo.includes(rede);
+  const temInstagram = alvoInclui("instagram") && contasSociais.some((c) => c.rede === "instagram" && c.status === "conectado");
+  const temLinkedin = alvoInclui("linkedin") && contasSociais.some((c) => c.rede === "linkedin" && c.status === "conectado");
   const precisaAprovar = !conteudo.aprovadoPor;
 
   return (

@@ -46,6 +46,7 @@ export type CalendarioItem = {
   briefing: string | null;
   status: string;
   aprovacaoAutomatica: boolean;
+  redesAlvo: string[];
   empresa: { nome: string; logoUrl: string | null };
   conteudos?: {
     id: string;
@@ -89,6 +90,7 @@ export type Conteudo = {
     tipoPost: string;
     dataHora: string;
     status: string;
+    redesAlvo: string[];
     empresa: {
       nome: string;
       logoUrl: string | null;
@@ -325,6 +327,7 @@ export type CalendarioItemInput = {
   tipoPost: string;
   briefing?: string;
   aprovacaoAutomatica?: boolean;
+  redesAlvo?: string[];
 };
 
 export async function criarCalendarioItem(

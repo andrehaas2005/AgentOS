@@ -123,8 +123,16 @@ export async function atualizarStatusAposPublicacao(calendarioId: string): Promi
   const conteudo = calendario?.conteudos[0];
   if (!calendario || !conteudo) return;
 
+  // Se o agendamento restringiu a redes específicas, só essas contam pra considerar o
+  // item "publicado" — senão, um agendamento feito só pro LinkedIn nunca fecharia porque
+  // o Instagram (conectado, mas fora do alvo) nunca teria uma Publicacao.
   const redesConectadas = calendario.empresa.contasSociais
-    .filter((c) => c.status === "conectado" && (c.rede === "instagram" || c.rede === "linkedin"))
+    .filter(
+      (c) =>
+        c.status === "conectado" &&
+        (c.rede === "instagram" || c.rede === "linkedin") &&
+        (calendario.redesAlvo.length === 0 || calendario.redesAlvo.includes(c.rede)),
+    )
     .map((c) => c.rede);
   if (redesConectadas.length === 0) return;
 
@@ -147,8 +155,14 @@ export async function publicarConteudoAprovado(conteudoId: string): Promise<Resu
   if (!conteudo.aprovadoPor) throw new Error("Este conteúdo ainda não foi aprovado.");
 
   const empresaId = conteudo.calendario.empresaId;
+  const redesAlvo = conteudo.calendario.redesAlvo;
   const redesConectadas = conteudo.calendario.empresa.contasSociais
-    .filter((c) => c.status === "conectado" && (c.rede === "instagram" || c.rede === "linkedin"))
+    .filter(
+      (c) =>
+        c.status === "conectado" &&
+        (c.rede === "instagram" || c.rede === "linkedin") &&
+        (redesAlvo.length === 0 || redesAlvo.includes(c.rede)),
+    )
     .map((c) => c.rede as RedeSuportada);
 
   const resultados: ResultadoPublicacaoRede[] = [];

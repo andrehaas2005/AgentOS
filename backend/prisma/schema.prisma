@@ -75,6 +75,7 @@ model CalendarioItem {
   briefing            String?
   status              StatusCalendario  @default(planejado)
   aprovacaoAutomatica Boolean           @default(false) @map("aprovacao_automatica")
+  redesAlvo           RedeSocial[]      @default([]) @map("redes_alvo")
   createdAt           DateTime          @default(now()) @map("created_at")
 
   conteudos Conteudo[]

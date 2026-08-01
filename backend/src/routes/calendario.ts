@@ -17,12 +17,17 @@ const TIPOS_POST = [
   "post",
 ] as const;
 
+const REDES = ["instagram", "facebook", "youtube", "linkedin", "tiktok", "blog", "outro"] as const;
+
 const calendarioInput = z.object({
   empresaId: z.string().uuid(),
   dataHora: z.coerce.date(),
   tipoPost: z.enum(TIPOS_POST),
   briefing: z.string().optional(),
   aprovacaoAutomatica: z.boolean().optional(),
+  // Vazio/omitido = publica em todas as redes conectadas da empresa (comportamento padrão,
+  // preserva os itens já existentes). Quando preenchido, restringe a essas redes.
+  redesAlvo: z.array(z.enum(REDES)).optional(),
 });
 
 calendarioRouter.get("/", async (req, res) => {

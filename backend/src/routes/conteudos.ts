@@ -74,6 +74,9 @@ conteudosRouter.post("/:id/publicar", async (req, res) => {
     if (!conteudo.aprovadoPor) {
       return res.status(403).json({ error: "Este conteúdo ainda não foi aprovado. Aprove antes de publicar." });
     }
+    if (conteudo.calendario.redesAlvo.length > 0 && !conteudo.calendario.redesAlvo.includes("instagram")) {
+      return res.status(403).json({ error: "Este agendamento não inclui o Instagram como rede de publicação." });
+    }
 
     await executarPublicacaoAgente(req.params.id, conteudo.calendario.empresaId, "instagram");
     await atualizarStatusAposPublicacao(conteudo.calendarioId);
@@ -109,6 +112,9 @@ conteudosRouter.post("/:id/publicar-linkedin", async (req, res) => {
     if (!conteudo) return res.status(404).json({ error: "Conteúdo não encontrado." });
     if (!conteudo.aprovadoPor) {
       return res.status(403).json({ error: "Este conteúdo ainda não foi aprovado. Aprove antes de publicar." });
+    }
+    if (conteudo.calendario.redesAlvo.length > 0 && !conteudo.calendario.redesAlvo.includes("linkedin")) {
+      return res.status(403).json({ error: "Este agendamento não inclui o LinkedIn como rede de publicação." });
     }
 
     await executarPublicacaoAgente(req.params.id, conteudo.calendario.empresaId, "linkedin");

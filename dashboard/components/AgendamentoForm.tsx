@@ -41,6 +41,21 @@ export function AgendamentoForm({ empresas, onClose }: Props) {
   const [briefing, setBriefing] = useState("");
   const [recorrente, setRecorrente] = useState(false);
   const [aprovacaoAutomatica, setAprovacaoAutomatica] = useState(false);
+  const [redesAlvo, setRedesAlvo] = useState<Set<string>>(new Set());
+
+  const empresaSelecionada = empresas.find((e) => e.id === empresaId);
+  const redesConectadas = (empresaSelecionada?.contasSociais ?? []).filter(
+    (c) => c.status === "conectado" && (c.rede === "instagram" || c.rede === "linkedin"),
+  );
+
+  function alternarRede(rede: string) {
+    setRedesAlvo((prev) => {
+      const proximo = new Set(prev);
+      if (proximo.has(rede)) proximo.delete(rede);
+      else proximo.add(rede);
+      return proximo;
+    });
+  }
 
   const [data, setData] = useState(hoje());
   const [horario, setHorario] = useState("09:00");
@@ -107,6 +122,7 @@ export function AgendamentoForm({ empresas, onClose }: Props) {
         tipoPost,
         briefing: briefing.trim() || undefined,
         aprovacaoAutomatica,
+        redesAlvo: redesAlvo.size > 0 ? Array.from(redesAlvo) : undefined,
       });
       if (!resultado.ok) {
         setSalvando(false);
@@ -139,7 +155,10 @@ export function AgendamentoForm({ empresas, onClose }: Props) {
             Empresa
             <select
               value={empresaId}
-              onChange={(e) => setEmpresaId(e.target.value)}
+              onChange={(e) => {
+                setEmpresaId(e.target.value);
+                setRedesAlvo(new Set());
+              }}
               className="rounded-lg border border-border bg-surface px-3 py-2 text-sm text-white outline-none focus:border-blue-500"
             >
               {empresas.map((e) => (
@@ -164,6 +183,35 @@ export function AgendamentoForm({ empresas, onClose }: Props) {
               ))}
             </select>
           </label>
+
+          {redesConectadas.length > 1 && (
+            <label className="flex flex-col gap-1 text-xs text-gray-400">
+              Rede de publicação
+              <div className="flex flex-wrap gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setRedesAlvo(new Set())}
+                  className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                    redesAlvo.size === 0 ? "bg-blue-600 text-white" : "bg-surface text-gray-400 hover:text-white"
+                  }`}
+                >
+                  Todas
+                </button>
+                {redesConectadas.map((c) => (
+                  <button
+                    key={c.rede}
+                    type="button"
+                    onClick={() => alternarRede(c.rede)}
+                    className={`rounded-full px-2.5 py-1 text-xs font-medium capitalize ${
+                      redesAlvo.has(c.rede) ? "bg-blue-600 text-white" : "bg-surface text-gray-400 hover:text-white"
+                    }`}
+                  >
+                    {c.rede}
+                  </button>
+                ))}
+              </div>
+            </label>
+          )}
 
           <label className="flex flex-col gap-1 text-xs text-gray-400">
             Assunto / briefing

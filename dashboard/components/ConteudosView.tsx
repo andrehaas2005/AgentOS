@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { List, LayoutGrid } from "lucide-react";
-import type { Conteudo } from "@/lib/api";
+import type { Conteudo, Empresa } from "@/lib/api";
 import { ConteudoPreviewCard } from "./ConteudoPreviewCard";
 import { EmpresaAvatar } from "./EmpresaAvatar";
 
@@ -21,7 +21,7 @@ function preview(texto: string | null) {
   return texto.length > 100 ? `${texto.slice(0, 100)}…` : texto;
 }
 
-export function ConteudosView({ conteudos }: { conteudos: Conteudo[] }) {
+export function ConteudosView({ conteudos, empresas }: { conteudos: Conteudo[]; empresas: Empresa[] }) {
   const [visualizacao, setVisualizacao] = useState<"lista" | "cards">("lista");
 
   return (
@@ -92,7 +92,7 @@ export function ConteudosView({ conteudos }: { conteudos: Conteudo[] }) {
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {conteudos.map((conteudo) => (
-            <ConteudoPreviewCard key={conteudo.id} conteudo={conteudo} />
+            <ConteudoPreviewCard key={conteudo.id} conteudo={conteudo} empresas={empresas} />
           ))}
         </div>
       )}

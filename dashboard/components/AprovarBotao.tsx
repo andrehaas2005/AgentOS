@@ -3,12 +3,14 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCheck } from "lucide-react";
-import { aprovarConteudo } from "@/lib/api";
+import { aprovarConteudo, type Conteudo } from "@/lib/api";
 
-export function AprovarBotao({ conteudoId }: { conteudoId: string }) {
+export function AprovarBotao({ conteudo }: { conteudo: Conteudo }) {
   const router = useRouter();
   const [aprovando, setAprovando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+
+  const revisaoAtual = conteudo.metadata?.ultimaRevisao?.versaoRevisada === conteudo.versao;
 
   async function aprovar() {
     const confirmado = window.confirm(
@@ -18,7 +20,7 @@ export function AprovarBotao({ conteudoId }: { conteudoId: string }) {
 
     setAprovando(true);
     setErro(null);
-    const resultado = await aprovarConteudo(conteudoId, "André Haas");
+    const resultado = await aprovarConteudo(conteudo.id, "André Haas");
     setAprovando(false);
     if (!resultado.ok) {
       setErro(resultado.erro ?? "Não foi possível aprovar.");
@@ -32,11 +34,14 @@ export function AprovarBotao({ conteudoId }: { conteudoId: string }) {
       <button
         type="button"
         onClick={aprovar}
-        disabled={aprovando}
+        disabled={aprovando || !revisaoAtual}
         className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-500 disabled:opacity-50"
       >
         <CheckCheck size={13} /> {aprovando ? "Aprovando..." : "Aprovar"}
       </button>
+      {!revisaoAtual && (
+        <p className="text-[11px] text-gray-500">Rode a revisão de marca (v{conteudo.versao}) antes de aprovar.</p>
+      )}
       {erro && <p className="text-[11px] text-red-400">{erro}</p>}
     </div>
   );

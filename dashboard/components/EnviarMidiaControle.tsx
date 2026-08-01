@@ -18,7 +18,7 @@ export function EnviarMidiaControle({ conteudoId }: { conteudoId: string }) {
     const resultado = await enviarMidiaConteudo(conteudoId, arquivo);
     setEnviando(false);
     if (!resultado.ok) {
-      setErro(resultado.erro ?? "Não foi possível enviar a imagem.");
+      setErro(resultado.erro ?? "Não foi possível enviar o arquivo.");
       return;
     }
     router.refresh();
@@ -29,7 +29,7 @@ export function EnviarMidiaControle({ conteudoId }: { conteudoId: string }) {
       <input
         ref={inputRef}
         type="file"
-        accept="image/jpeg"
+        accept="image/jpeg,video/mp4,video/quicktime,video/webm"
         className="hidden"
         onChange={(e) => aoEscolherArquivo(e.target.files?.[0])}
       />
@@ -39,7 +39,7 @@ export function EnviarMidiaControle({ conteudoId }: { conteudoId: string }) {
         disabled={enviando}
         className="flex items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-1.5 text-xs text-gray-300 hover:text-white disabled:opacity-50"
       >
-        <Upload size={13} /> {enviando ? "Enviando..." : "Enviar imagem (JPEG)"}
+        <Upload size={13} /> {enviando ? "Enviando..." : "Enviar imagem ou vídeo"}
       </button>
       {erro && <p className="text-[11px] text-red-400">{erro}</p>}
     </div>

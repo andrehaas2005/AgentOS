@@ -39,7 +39,7 @@ export default async function ConteudosPage({
           calendário.
         </p>
       ) : (
-        <ConteudosView conteudos={conteudos} />
+        <ConteudosView conteudos={conteudos} empresas={empresas} />
       )}
     </>
   );

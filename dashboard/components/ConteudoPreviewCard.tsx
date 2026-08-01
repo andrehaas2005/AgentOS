@@ -1,12 +1,16 @@
-import { Image as ImageIcon, GalleryHorizontal, Sparkles, Video, Clapperboard, Film, FileText } from "lucide-react";
-import { type Conteudo } from "@/lib/api";
+import { useState } from "react";
+import { Image as ImageIcon, GalleryHorizontal, Sparkles, Video, Clapperboard, Film, FileText, Copy } from "lucide-react";
+import { type Conteudo, type Empresa } from "@/lib/api";
 import { EmpresaAvatar } from "./EmpresaAvatar";
 import { CarrosselMidia } from "./CarrosselMidia";
 import { EnviarMidiaControle } from "./EnviarMidiaControle";
 import { AprovarBotao } from "./AprovarBotao";
+import { RevisaoBotao } from "./RevisaoBotao";
 import { PublicarInstagramPanel } from "./PublicarInstagramPanel";
 import { PublicarLinkedinPanel } from "./PublicarLinkedinPanel";
 import { TextoConteudo } from "./TextoConteudo";
+import { TipoPostSelector } from "./TipoPostSelector";
+import { ReplicarConteudoModal } from "./ReplicarConteudoModal";
 
 const STATUS_LABEL: Record<string, string> = {
   planejado: "Planejado",
@@ -28,7 +32,8 @@ const TIPO_ICON: Record<string, typeof ImageIcon> = {
   post: FileText,
 };
 
-export function ConteudoPreviewCard({ conteudo }: { conteudo: Conteudo }) {
+export function ConteudoPreviewCard({ conteudo, empresas }: { conteudo: Conteudo; empresas: Empresa[] }) {
+  const [replicando, setReplicando] = useState(false);
   const Icone = TIPO_ICON[conteudo.calendario.tipoPost] ?? FileText;
   const promptVisual =
     conteudo.metadata?.promptImagem ?? conteudo.metadata?.promptImagens?.[0] ?? conteudo.metadata?.roteiroVideo;
@@ -60,20 +65,24 @@ export function ConteudoPreviewCard({ conteudo }: { conteudo: Conteudo }) {
             </p>
           </div>
         </div>
-        <span className="shrink-0 rounded-full bg-surface px-2 py-0.5 text-[10px] uppercase tracking-wide text-gray-300">
-          {conteudo.calendario.tipoPost}
-        </span>
+        <TipoPostSelector conteudoId={conteudo.id} tipoPost={conteudo.calendario.tipoPost} />
       </div>
 
       {mostrarPromptVisual ? (
-        <div className="flex aspect-square flex-col items-center justify-center gap-2 bg-gradient-to-br from-surface to-black/40 px-4 text-center">
+        <div className="flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-surface to-black/40 px-4 py-6 text-center">
           <Icone size={32} className="text-gray-500" />
           <p className="line-clamp-4 text-[11px] italic text-gray-400">
             Prévia do prompt visual: &quot;{promptVisual}&quot;
           </p>
+          <EnviarMidiaControle conteudoId={conteudo.id} />
         </div>
       ) : temMidia ? (
-        <CarrosselMidia urls={conteudo.midiaUrls} />
+        <div className="flex flex-col gap-2 border-b border-border pb-2">
+          <CarrosselMidia conteudoId={conteudo.id} urls={conteudo.midiaUrls} metadata={conteudo.metadata} />
+          <div className="flex justify-center px-3">
+            <EnviarMidiaControle conteudoId={conteudo.id} />
+          </div>
+        </div>
       ) : (
         <div className="flex aspect-square flex-col items-center justify-center gap-2 bg-gradient-to-br from-surface to-black/40 px-4 text-center">
           <Icone size={32} className="text-gray-500" />
@@ -83,7 +92,12 @@ export function ConteudoPreviewCard({ conteudo }: { conteudo: Conteudo }) {
 
       {(precisaAprovar || temInstagram || temLinkedin) && (
         <div className="flex flex-wrap items-center gap-2 border-t border-border px-3 py-2">
-          {precisaAprovar && <AprovarBotao conteudoId={conteudo.id} />}
+          {precisaAprovar && (
+            <>
+              <RevisaoBotao conteudo={conteudo} />
+              <AprovarBotao conteudo={conteudo} />
+            </>
+          )}
           {temInstagram && <PublicarInstagramPanel conteudo={conteudo} />}
           {temLinkedin && <PublicarLinkedinPanel conteudo={conteudo} />}
         </div>
@@ -119,10 +133,25 @@ export function ConteudoPreviewCard({ conteudo }: { conteudo: Conteudo }) {
         )}
 
         <div className="mt-1 flex items-center justify-between border-t border-border pt-2 text-[11px] text-gray-500">
-          <span>v{conteudo.versao}</span>
+          <div className="flex items-center gap-2">
+            <span>v{conteudo.versao}</span>
+            <button
+              type="button"
+              onClick={() => setReplicando(true)}
+              disabled={empresas.length === 0}
+              title="Replicar para outra empresa"
+              className="rounded p-0.5 hover:bg-surface hover:text-white disabled:opacity-50"
+            >
+              <Copy size={12} />
+            </button>
+          </div>
           <span>{STATUS_LABEL[conteudo.calendario.status] ?? conteudo.calendario.status}</span>
         </div>
       </div>
+
+      {replicando && (
+        <ReplicarConteudoModal conteudo={conteudo} empresas={empresas} onClose={() => setReplicando(false)} />
+      )}
     </div>
   );
 }

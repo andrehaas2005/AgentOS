@@ -4,18 +4,9 @@ import type { StatusCalendario } from "@prisma/client";
 import { prisma } from "../db";
 import { executarAgenteCeo } from "../agentes/ceo";
 import { atualizarStatusAposPublicacao } from "../lib/aprovacao";
+import { TIPOS_POST } from "../lib/tiposPost";
 
 export const calendarioRouter = Router();
-
-const TIPOS_POST = [
-  "imagem_frase",
-  "carrossel",
-  "animacao",
-  "video_curto",
-  "stories",
-  "reels",
-  "post",
-] as const;
 
 const REDES = ["instagram", "facebook", "youtube", "linkedin", "tiktok", "blog", "outro"] as const;
 

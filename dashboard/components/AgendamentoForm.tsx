@@ -4,21 +4,12 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { X } from "lucide-react";
 import { criarCalendarioItem, type Empresa } from "@/lib/api";
+import { TIPOS_POST } from "@/lib/tiposPost";
 
 type Props = {
   empresas: Empresa[];
   onClose: () => void;
 };
-
-const TIPOS_POST = [
-  { value: "imagem_frase", label: "Imagem com frase" },
-  { value: "carrossel", label: "Carrossel" },
-  { value: "animacao", label: "Animação" },
-  { value: "video_curto", label: "Vídeo curto" },
-  { value: "stories", label: "Stories" },
-  { value: "reels", label: "Reels" },
-  { value: "post", label: "Post (texto)" },
-];
 
 const DIAS_SEMANA = [
   { value: 0, label: "D" },

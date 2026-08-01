@@ -83,8 +83,10 @@ export type ConteudoMetadata = {
   cta?: string;
   promptImagem?: string;
   promptImagens?: string[];
+  slidesEducativo?: { promptFoto?: string }[];
   roteiroVideo?: string;
   notasAgentesCustomizados?: { agente: string; nota: string }[];
+  ultimaRevisao?: { versaoRevisada: number; aprovado: boolean; observacoes: string; revisadoEm: string };
 };
 
 export type Conteudo = {
@@ -409,8 +411,18 @@ export async function aprovarConteudo(
   id: string,
   aprovadoPor: string,
 ): Promise<{ ok: boolean; erro?: string }> {
-  const resultado = await postJson(`/api/conteudos/${id}/aprovar`, { aprovadoPor });
-  return { ok: resultado.ok, erro: resultado.erro };
+  try {
+    const res = await fetch(`${API_URL}/api/conteudos/${id}/aprovar`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ aprovadoPor }),
+    });
+    const corpo = await res.json().catch(() => null);
+    if (!res.ok) return { ok: false, erro: corpo?.error ?? "Não foi possível aprovar." };
+    return { ok: true };
+  } catch {
+    return { ok: false, erro: "Falha de conexão com o backend." };
+  }
 }
 
 export function getAgentesStats(empresaId?: string) {
@@ -562,8 +574,85 @@ export async function enviarMidiaConteudo(
     const form = new FormData();
     form.append("midia", arquivo);
     const res = await fetch(`${API_URL}/api/conteudos/${id}/midia`, { method: "POST", body: form });
-    if (!res.ok) return { ok: false, erro: "Não foi possível enviar a imagem." };
+    const corpo = await res.json().catch(() => null);
+    if (!res.ok) return { ok: false, erro: corpo?.error ?? "Não foi possível enviar o arquivo." };
     return { ok: true };
+  } catch {
+    return { ok: false, erro: "Falha de conexão com o backend." };
+  }
+}
+
+export async function atualizarTipoConteudo(id: string, tipoPost: string): Promise<{ ok: boolean; erro?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/api/conteudos/${id}/tipo`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tipoPost }),
+    });
+    const corpo = await res.json().catch(() => null);
+    if (!res.ok) return { ok: false, erro: corpo?.error ?? "Não foi possível trocar o tipo de post." };
+    return { ok: true };
+  } catch {
+    return { ok: false, erro: "Falha de conexão com o backend." };
+  }
+}
+
+export async function removerMidiaConteudo(id: string, url: string): Promise<{ ok: boolean; erro?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/api/conteudos/${id}/midia`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url }),
+    });
+    const corpo = await res.json().catch(() => null);
+    if (!res.ok) return { ok: false, erro: corpo?.error ?? "Não foi possível remover a mídia." };
+    return { ok: true };
+  } catch {
+    return { ok: false, erro: "Falha de conexão com o backend." };
+  }
+}
+
+export async function regenerarMidiaConteudo(id: string, indice: number): Promise<{ ok: boolean; erro?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/api/conteudos/${id}/midia/regenerar`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ indice }),
+    });
+    const corpo = await res.json().catch(() => null);
+    if (!res.ok) return { ok: false, erro: corpo?.error ?? "Não foi possível gerar a mídia novamente." };
+    return { ok: true };
+  } catch {
+    return { ok: false, erro: "Falha de conexão com o backend." };
+  }
+}
+
+export async function dispararRevisao(
+  id: string,
+): Promise<{ ok: boolean; erro?: string; revisao?: NonNullable<ConteudoMetadata["ultimaRevisao"]> }> {
+  try {
+    const res = await fetch(`${API_URL}/api/conteudos/${id}/revisao`, { method: "POST" });
+    const corpo = await res.json().catch(() => null);
+    if (!res.ok) return { ok: false, erro: corpo?.error ?? "Não foi possível rodar a revisão." };
+    return { ok: true, revisao: corpo };
+  } catch {
+    return { ok: false, erro: "Falha de conexão com o backend." };
+  }
+}
+
+export async function replicarConteudo(
+  id: string,
+  dados: { empresaId: string; dataHora: string },
+): Promise<{ ok: boolean; erro?: string; conteudoId?: string; calendarioId?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/api/conteudos/${id}/replicar`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(dados),
+    });
+    const corpo = await res.json().catch(() => null);
+    if (!res.ok) return { ok: false, erro: corpo?.error ?? "Não foi possível replicar o conteúdo." };
+    return { ok: true, conteudoId: corpo.conteudoId, calendarioId: corpo.calendarioId };
   } catch {
     return { ok: false, erro: "Falha de conexão com o backend." };
   }

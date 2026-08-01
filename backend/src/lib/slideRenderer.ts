@@ -9,9 +9,9 @@ import { gerarUmaImagemBuffer } from "./gerarImagemFallback";
 // de pedir pro modelo de imagem desenhar texto (tipografia de IA generativa não é confiável).
 
 export type SlideEducativo =
-  | { tipo: "capa"; titulo: string; bullets?: string[]; promptFoto?: string }
-  | { tipo: "passo"; badge?: string; titulo: string; texto?: string; icone?: string; promptFoto?: string }
-  | { tipo: "fechamento"; titulo: string; icone?: string };
+  | { tipo: "capa"; titulo: string; bullets?: string[]; promptFoto?: string; corOverride?: string }
+  | { tipo: "passo"; badge?: string; titulo: string; texto?: string; icone?: string; promptFoto?: string; corOverride?: string }
+  | { tipo: "fechamento"; titulo: string; icone?: string; corOverride?: string };
 
 type EmpresaParaSlide = { nome: string; logoUrl: string | null; brandGuidelines: unknown };
 
@@ -222,7 +222,7 @@ async function renderizarSlideCapa(
   garantirFontes();
   const canvas = createCanvas(TAMANHO, TAMANHO);
   const ctx = canvas.getContext("2d");
-  const cor = corPrimariaDe(empresa.brandGuidelines);
+  const cor = slide.corOverride ?? corPrimariaDe(empresa.brandGuidelines);
   const pad = 60;
 
   ctx.fillStyle = misturarComBranco(cor, 0.95);
@@ -298,7 +298,7 @@ async function renderizarSlidePasso(
   garantirFontes();
   const canvas = createCanvas(TAMANHO, TAMANHO);
   const ctx = canvas.getContext("2d");
-  const cor = corPrimariaDe(empresa.brandGuidelines);
+  const cor = slide.corOverride ?? corPrimariaDe(empresa.brandGuidelines);
 
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, TAMANHO, TAMANHO);
@@ -380,7 +380,7 @@ async function renderizarSlideFechamento(
   garantirFontes();
   const canvas = createCanvas(TAMANHO, TAMANHO);
   const ctx = canvas.getContext("2d");
-  const cor = corPrimariaDe(empresa.brandGuidelines);
+  const cor = slide.corOverride ?? corPrimariaDe(empresa.brandGuidelines);
 
   ctx.fillStyle = cor;
   ctx.fillRect(0, 0, TAMANHO, TAMANHO);

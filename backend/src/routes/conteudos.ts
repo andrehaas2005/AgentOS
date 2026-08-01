@@ -13,6 +13,7 @@ import { TIPOS_POST } from "../lib/tiposPost";
 import { removerArquivoMidiaDoDisco, regenerarMidiaConteudo, RegeneracaoIndisponivelError } from "../lib/midiaConteudo";
 import { dispararRevisao } from "../lib/revisao";
 import { replicarConteudo } from "../lib/replicarConteudo";
+import { dispararTurnoRecriacaoSlide } from "../lib/recriarSlide";
 
 export const conteudosRouter = Router();
 
@@ -141,6 +142,27 @@ conteudosRouter.post("/:id/midia/regenerar", async (req, res) => {
     res.status(erro instanceof RegeneracaoIndisponivelError ? 502 : 400).json({
       error: erro instanceof Error ? erro.message : "Erro inesperado ao gerar a mídia.",
     });
+  }
+});
+
+const mensagemChatInput = z.object({
+  role: z.enum(["user", "assistant"]),
+  content: z.string(),
+});
+const recriarSlideInput = z.object({
+  indice: z.number().int().min(0),
+  mensagens: z.array(mensagemChatInput),
+});
+
+conteudosRouter.post("/:id/midia/recriar", async (req, res) => {
+  const parsed = recriarSlideInput.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+
+  try {
+    const turno = await dispararTurnoRecriacaoSlide(req.params.id, parsed.data.indice, parsed.data.mensagens);
+    res.json(turno);
+  } catch (erro) {
+    res.status(400).json({ error: erro instanceof Error ? erro.message : "Erro inesperado ao recriar o slide." });
   }
 });
 

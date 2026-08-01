@@ -17,7 +17,9 @@ export class AnthropicError extends Error {
   }
 }
 
-async function chamarAnthropic(systemPrompt: string, prompt: string): Promise<string> {
+export type MensagemChat = { role: "user" | "assistant"; content: string };
+
+async function chamarAnthropicMensagens(systemPrompt: string, mensagens: MensagemChat[]): Promise<string> {
   if (!ANTHROPIC_API_KEY) throw new AnthropicError("ANTHROPIC_API_KEY não configurada");
 
   const res = await fetch(ANTHROPIC_URL, {
@@ -31,7 +33,7 @@ async function chamarAnthropic(systemPrompt: string, prompt: string): Promise<st
       model: MODELO_TEXTO,
       max_tokens: MAX_TOKENS,
       system: systemPrompt,
-      messages: [{ role: "user", content: prompt }],
+      messages: mensagens,
     }),
   });
   const corpo = (await res.json().catch(() => null)) as {
@@ -48,6 +50,10 @@ async function chamarAnthropic(systemPrompt: string, prompt: string): Promise<st
   return texto;
 }
 
+async function chamarAnthropic(systemPrompt: string, prompt: string): Promise<string> {
+  return chamarAnthropicMensagens(systemPrompt, [{ role: "user", content: prompt }]);
+}
+
 export async function gerarTexto(systemPrompt: string, prompt: string): Promise<string> {
   const texto = await chamarAnthropic(systemPrompt, prompt);
   return texto.trim();
@@ -59,6 +65,25 @@ export async function gerarJson<T>(systemPrompt: string, prompt: string, schemaD
   const texto = await chamarAnthropic(
     `${systemPrompt}\n\nResponda SOMENTE com um JSON válido (sem markdown, sem texto antes ou depois) seguindo este formato: ${schemaDescricao}`,
     prompt,
+  );
+  const limpo = extrairJson(texto);
+  try {
+    return JSON.parse(limpo) as T;
+  } catch {
+    throw new AnthropicError(`Anthropic retornou JSON inválido: ${limpo.slice(0, 300)}`);
+  }
+}
+
+// Variante multi-turno de gerarJson — usada por fluxos de chat, onde o histórico inteiro
+// precisa ir a cada chamada porque a API não mantém estado de conversa entre requisições.
+export async function gerarJsonChat<T>(
+  systemPrompt: string,
+  mensagens: MensagemChat[],
+  schemaDescricao: string,
+): Promise<T> {
+  const texto = await chamarAnthropicMensagens(
+    `${systemPrompt}\n\nResponda SOMENTE com um JSON válido (sem markdown, sem texto antes ou depois) seguindo este formato: ${schemaDescricao}`,
+    mensagens,
   );
   const limpo = extrairJson(texto);
   try {

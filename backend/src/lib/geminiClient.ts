@@ -88,6 +88,32 @@ export async function gerarJson<T>(
   }
 }
 
+export type MensagemChat = { role: "user" | "assistant"; content: string };
+
+// Variante multi-turno de gerarJson — usada por fluxos de chat (ex.: recriar um slide
+// conversando com o Diretor de Arte), onde o histórico inteiro precisa ir a cada chamada
+// porque a API do Gemini não mantém estado de conversa entre requisições.
+export async function gerarJsonChat<T>(
+  systemPrompt: string,
+  mensagens: MensagemChat[],
+  schema: Record<string, unknown>,
+): Promise<T> {
+  const { parts } = await chamarGemini(MODELO_TEXTO, {
+    systemInstruction: { parts: [{ text: systemPrompt }] },
+    contents: mensagens.map((m) => ({
+      role: m.role === "assistant" ? "model" : "user",
+      parts: [{ text: m.content }],
+    })),
+    generationConfig: { responseMimeType: "application/json", responseSchema: schema },
+  });
+  const texto = parts.map((p) => p.text ?? "").join("");
+  try {
+    return JSON.parse(texto) as T;
+  } catch {
+    throw new GeminiJsonInvalidoError(`Gemini retornou JSON inválido: ${texto.slice(0, 300)}`);
+  }
+}
+
 export async function gerarImagem(prompt: string): Promise<Buffer> {
   const { parts } = await chamarGemini(MODELO_IMAGEM, {
     contents: [{ role: "user", parts: [{ text: prompt }] }],

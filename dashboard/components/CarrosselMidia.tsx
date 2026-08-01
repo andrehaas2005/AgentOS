@@ -2,8 +2,16 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight, Trash2, Sparkles } from "lucide-react";
-import { urlPublica, removerMidiaConteudo, regenerarMidiaConteudo, type ConteudoMetadata } from "@/lib/api";
+import { ChevronLeft, ChevronRight, Trash2, Sparkles, MessageCircle } from "lucide-react";
+import {
+  urlPublica,
+  removerMidiaConteudo,
+  regenerarMidiaConteudo,
+  recriarSlideTurno,
+  type ConteudoMetadata,
+  type MensagemChat,
+} from "@/lib/api";
+import { AgenteChatModal } from "./AgenteChatModal";
 
 function ehVideo(url: string): boolean {
   return /\.(mp4|mov|webm)$/i.test(url);
@@ -30,9 +38,11 @@ export function CarrosselMidia({
   const [indice, setIndice] = useState(0);
   const [processando, setProcessando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const [recriando, setRecriando] = useState(false);
   const total = urls.length;
   const urlAtual = urls[indice];
   const video = ehVideo(urlAtual);
+  const ehSlideEducativo = Boolean(metadata?.slidesEducativo?.[indice]);
 
   async function excluir() {
     if (!window.confirm("Remover esta mídia do post?")) return;
@@ -110,7 +120,18 @@ export function CarrosselMidia({
           >
             <Trash2 size={13} />
           </button>
-          {!video && temPromptSalvo(metadata, indice) && (
+          {!video && ehSlideEducativo && (
+            <button
+              type="button"
+              onClick={() => setRecriando(true)}
+              disabled={processando}
+              title="Recriar com o Diretor de Arte"
+              className="rounded-full bg-black/50 p-1 text-white hover:bg-violet-600/80 disabled:opacity-50"
+            >
+              <MessageCircle size={13} />
+            </button>
+          )}
+          {!video && !ehSlideEducativo && temPromptSalvo(metadata, indice) && (
             <button
               type="button"
               onClick={regenerar}
@@ -125,6 +146,16 @@ export function CarrosselMidia({
       </div>
       {processando && <p className="px-3 pt-1.5 text-[11px] text-gray-500">Processando...</p>}
       {erro && <p className="px-3 pt-1.5 text-[11px] text-red-400">{erro}</p>}
+
+      {recriando && (
+        <AgenteChatModal
+          titulo="Recriar slide"
+          agenteNome="Diretor de Arte"
+          onEnviarTurno={(mensagens: MensagemChat[]) => recriarSlideTurno(conteudoId, indice, mensagens)}
+          onAplicado={() => router.refresh()}
+          onClose={() => setRecriando(false)}
+        />
+      )}
     </div>
   );
 }

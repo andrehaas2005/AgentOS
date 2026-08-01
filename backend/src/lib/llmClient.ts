@@ -3,11 +3,25 @@ import { marcarAtivo, marcarInativo } from "../agentes/status";
 import {
   gerarTexto as gerarTextoGemini,
   gerarJson as gerarJsonGemini,
+  gerarJsonChat as gerarJsonChatGemini,
   GeminiError,
   GeminiJsonInvalidoError,
+  type MensagemChat,
 } from "./geminiClient";
-import { gerarTexto as gerarTextoOpenAI, gerarJson as gerarJsonOpenAI, OpenAIError } from "./openaiClient";
-import { gerarTexto as gerarTextoAnthropic, gerarJson as gerarJsonAnthropic, AnthropicError } from "./anthropicClient";
+import {
+  gerarTexto as gerarTextoOpenAI,
+  gerarJson as gerarJsonOpenAI,
+  gerarJsonChat as gerarJsonChatOpenAI,
+  OpenAIError,
+} from "./openaiClient";
+import {
+  gerarTexto as gerarTextoAnthropic,
+  gerarJson as gerarJsonAnthropic,
+  gerarJsonChat as gerarJsonChatAnthropic,
+  AnthropicError,
+} from "./anthropicClient";
+
+export type { MensagemChat };
 
 // Cadeia de fallback para erros de COTA (um prompt malformado deve falhar normalmente,
 // não gastar tentativas nos outros provedores). Ordem: Gemini (padrão, mais barato) ->
@@ -141,6 +155,60 @@ export async function gerarJson<T>(
         jsonInvalidoOpenai ? contexto?.empresaId : undefined,
         "Corrigir resposta em formato inválido do OpenAI, tentando novamente via Anthropic (Claude)",
         () => gerarJsonAnthropic<T>(systemPrompt, prompt, schemaDescricao),
+      );
+    }
+  }
+}
+
+// Variante multi-turno de gerarJson — mesma cadeia de fallback de cota, mas recebendo o
+// histórico de mensagens inteiro em vez de um único prompt (usado por fluxos de chat).
+export async function gerarJsonChat<T>(
+  systemPrompt: string,
+  mensagens: MensagemChat[],
+  schema: Record<string, unknown>,
+  contexto?: { empresaId?: string },
+): Promise<T> {
+  try {
+    return await gerarJsonChatGemini<T>(systemPrompt, mensagens, schema);
+  } catch (erroGemini) {
+    const jsonInvalido = ehErroDeJsonInvalido(erroGemini);
+    if (!ehErroDeCota(erroGemini) && !jsonInvalido) throw erroGemini;
+
+    console.warn(
+      jsonInvalido
+        ? "Gemini retornou JSON em formato inválido — CEO aciona o Desenvolvedor pra corrigir via OpenAI..."
+        : "Gemini sem cota, tentando OpenAI...",
+      erroGemini,
+    );
+
+    const camposObrigatorios = Array.isArray((schema as { required?: unknown }).required)
+      ? (schema.required as string[]).join(", ")
+      : "";
+    const schemaDescricao = `${JSON.stringify(schema)}${
+      camposObrigatorios ? ` — TODOS os campos obrigatórios (${camposObrigatorios}) devem estar presentes na resposta, mesmo que vazios.` : ""
+    }`;
+
+    try {
+      return await comDesenvolvedor(
+        jsonInvalido ? contexto?.empresaId : undefined,
+        "Corrigir resposta em formato inválido do Gemini, tentando novamente via OpenAI",
+        () => gerarJsonChatOpenAI<T>(systemPrompt, mensagens, schemaDescricao),
+      );
+    } catch (erroOpenai) {
+      const jsonInvalidoOpenai = ehErroDeJsonInvalido(erroOpenai);
+      if (!ehErroDeCota(erroOpenai) && !jsonInvalidoOpenai) throw erroOpenai;
+
+      console.warn(
+        jsonInvalidoOpenai
+          ? "OpenAI também retornou JSON em formato inválido — Desenvolvedor tenta via Anthropic (Claude)..."
+          : "OpenAI sem cota, tentando Anthropic (Claude)...",
+        erroOpenai,
+      );
+
+      return await comDesenvolvedor(
+        jsonInvalidoOpenai ? contexto?.empresaId : undefined,
+        "Corrigir resposta em formato inválido do OpenAI, tentando novamente via Anthropic (Claude)",
+        () => gerarJsonChatAnthropic<T>(systemPrompt, mensagens, schemaDescricao),
       );
     }
   }

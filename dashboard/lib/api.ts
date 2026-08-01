@@ -83,11 +83,20 @@ export type ConteudoMetadata = {
   cta?: string;
   promptImagem?: string;
   promptImagens?: string[];
-  slidesEducativo?: { promptFoto?: string }[];
+  slidesEducativo?: {
+    tipo?: string;
+    titulo?: string;
+    texto?: string;
+    badge?: string;
+    promptFoto?: string;
+    corOverride?: string;
+  }[];
   roteiroVideo?: string;
   notasAgentesCustomizados?: { agente: string; nota: string }[];
   ultimaRevisao?: { versaoRevisada: number; aprovado: boolean; observacoes: string; revisadoEm: string };
 };
+
+export type MensagemChat = { role: "user" | "assistant"; content: string };
 
 export type Conteudo = {
   id: string;
@@ -653,6 +662,25 @@ export async function replicarConteudo(
     const corpo = await res.json().catch(() => null);
     if (!res.ok) return { ok: false, erro: corpo?.error ?? "Não foi possível replicar o conteúdo." };
     return { ok: true, conteudoId: corpo.conteudoId, calendarioId: corpo.calendarioId };
+  } catch {
+    return { ok: false, erro: "Falha de conexão com o backend." };
+  }
+}
+
+export async function recriarSlideTurno(
+  id: string,
+  indice: number,
+  mensagens: MensagemChat[],
+): Promise<{ ok: boolean; erro?: string; tipo?: "pergunta" | "aplicar"; pergunta?: string; resumo?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/api/conteudos/${id}/midia/recriar`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ indice, mensagens }),
+    });
+    const corpo = await res.json().catch(() => null);
+    if (!res.ok) return { ok: false, erro: corpo?.error ?? "Não foi possível conversar com o Diretor de Arte." };
+    return { ok: true, tipo: corpo.tipo, pergunta: corpo.pergunta, resumo: corpo.resumo };
   } catch {
     return { ok: false, erro: "Falha de conexão com o backend." };
   }

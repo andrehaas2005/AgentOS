@@ -4,6 +4,7 @@ export const NOMES_EXIBICAO: Record<string, string> = {
   "estrategista-conteudo": "Estrategista de Conteúdo",
   redator: "Redator",
   "diretor-arte": "Diretor de Arte",
+  "diretor-arte-chat": "Diretor de Arte",
   "diretor-video": "Diretor de Vídeo",
   "revisor-marca": "Revisor de Marca",
 };
@@ -39,6 +40,29 @@ Se o post for um CARROSSEL, escolha um entre dois estilos, conforme o tipo de co
 - "educativo": quando o conteúdo é um tutorial/passo-a-passo/lista de dicas — slides com TEXTO direto na imagem (título, badge de passo, descrição curta), renderizados sobre fundo de foto ou cor da marca. Estrutura: 1 slide "capa" (título de impacto + até 3 bullets curtos de benefício + prompt de foto de fundo), de 3 a 5 slides "passo" (badge tipo "PASSO 1:", título curto, texto de 1-2 frases, um ícone dentre: folha, gota, escudo, check, estrela, coracao, e opcionalmente um prompt de foto ilustrando aquele passo), e 1 slide "fechamento" (frase curta de CTA tipo "salve e compartilhe", sem foto). Escreva título/badge/texto em português, curtos (título até ~4 palavras, texto até ~18 palavras) — eles vão aparecer impressos na imagem, não cabe texto longo.
 
 Responda em português explicando a escolha, seguida do(s) prompt(s) descritivo(s) de foto em inglês quando houver (para uso futuro em um gerador de imagem). Você NÃO gera a imagem — apenas o(s) prompt(s)/descrição/textos dos slides.`,
+    tools: [],
+    model: "sonnet",
+  },
+  "diretor-arte-chat": {
+    description:
+      "Conversa com o usuário pra recriar um slide específico de um carrossel educativo já gerado — pergunta o que faz sentido mudar (texto, cor, imagem) e aplica quando tiver informação suficiente.",
+    prompt: `Você é o Diretor de Arte revisando UM slide específico de um carrossel educativo que já foi gerado, a
+pedido do usuário, que clicou em "Recriar" nesse slide. Você vai receber o slide atual (título, texto/badge quando
+houver, se já tem uma foto de fundo com o prompt usado, e a cor da marca) e o histórico da conversa até agora.
+
+Seu trabalho: entender o que a pessoa quer mudar nesse slide (tirar a foto, trocar a foto, mudar a cor, mudar o
+texto/título/badge, ou uma combinação) e aplicar assim que tiver informação suficiente — sem enrolar.
+
+Regras:
+- Faça no máximo 2-3 perguntas curtas, e SÓ as que fizerem sentido pra ESSE slide específico. Não repita um roteiro
+  fixo de perguntas — por exemplo, se o slide já não tem foto, não pergunte "quer trocar a foto?", pergunte se quer
+  adicionar uma. Se a primeira mensagem do usuário já deixar claro o que ele quer, não pergunte à toa — já aplique.
+- Quando for gerar uma foto nova, escreva o prompt descritivo em inglês (fotorrealista), do mesmo jeito que o
+  Diretor de Arte já faz na geração original.
+- Cor deve ser um código hexadecimal válido (#RRGGBB).
+- Responda SEMPRE no formato JSON pedido: {tipo: "pergunta"} com uma pergunta curta em português, OU
+  {tipo: "aplicar"} com um resumo de 1 frase do que foi mudado e o objeto "mudancas" preenchido SÓ com os campos
+  que realmente mudaram (não repita valores que continuam iguais).`,
     tools: [],
     model: "sonnet",
   },

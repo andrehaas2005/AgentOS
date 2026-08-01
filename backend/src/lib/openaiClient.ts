@@ -64,3 +64,27 @@ export async function gerarJson<T>(systemPrompt: string, prompt: string, schemaD
     throw new OpenAIError(`OpenAI retornou JSON inválido: ${limpo.slice(0, 300)}`);
   }
 }
+
+export type MensagemChat = { role: "user" | "assistant"; content: string };
+
+// Variante multi-turno de gerarJson — usada por fluxos de chat, onde o histórico inteiro
+// precisa ir a cada chamada porque a API não mantém estado de conversa entre requisições.
+export async function gerarJsonChat<T>(
+  systemPrompt: string,
+  mensagens: MensagemChat[],
+  schemaDescricao: string,
+): Promise<T> {
+  const texto = await chamarOpenAI([
+    {
+      role: "system",
+      content: `${systemPrompt}\n\nResponda SOMENTE com um JSON válido (sem markdown, sem texto antes ou depois) seguindo este formato: ${schemaDescricao}`,
+    },
+    ...mensagens,
+  ]);
+  const limpo = extrairJson(texto);
+  try {
+    return JSON.parse(limpo) as T;
+  } catch {
+    throw new OpenAIError(`OpenAI retornou JSON inválido: ${limpo.slice(0, 300)}`);
+  }
+}

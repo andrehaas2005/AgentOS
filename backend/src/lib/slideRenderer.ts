@@ -11,7 +11,7 @@ import { gerarUmaImagemBuffer } from "./gerarImagemFallback";
 export type SlideEducativo =
   | { tipo: "capa"; titulo: string; bullets?: string[]; promptFoto?: string; corOverride?: string }
   | { tipo: "passo"; badge?: string; titulo: string; texto?: string; icone?: string; promptFoto?: string; corOverride?: string }
-  | { tipo: "fechamento"; titulo: string; icone?: string; corOverride?: string };
+  | { tipo: "fechamento"; titulo: string; icone?: string; corOverride?: string; subtitulo?: string };
 
 type EmpresaParaSlide = { nome: string; logoUrl: string | null; brandGuidelines: unknown };
 
@@ -400,7 +400,7 @@ async function renderizarSlideFechamento(
 
   ctx.font = "34px 'Slide'";
   ctx.fillStyle = comAlpha("#ffffff", 0.85);
-  ctx.fillText(`Siga e acompanhe ${empresa.nome}`, TAMANHO / 2, y + 50);
+  ctx.fillText(slide.subtitulo ?? `Siga e acompanhe ${empresa.nome}`, TAMANHO / 2, y + 50);
 
   const teveLogo = await desenharLogo(ctx, empresa, TAMANHO / 2, TAMANHO - 160, 70);
   if (!teveLogo) {

@@ -39,8 +39,12 @@ export async function dispararTurnoRecriacaoSlide(
   if (!slideAtual) throw new Error("Esse slide não faz parte de um carrossel educativo.");
 
   const empresa = conteudo.calendario.empresa;
+  const notaFechamento =
+    slideAtual.tipo === "fechamento" && !slideAtual.subtitulo
+      ? `\nEsse slide de fechamento ainda não tem "subtitulo" definido — hoje ele mostra automaticamente o texto "Siga e acompanhe ${empresa.nome}" embaixo do título. Se o usuário pedir pra mudar esse texto (ex.: trocar pelo @ do Instagram, tirar parte do nome, etc.), use "novoTexto" pra definir um "subtitulo" customizado que substitui esse texto padrão.`
+      : "";
   const contextoSistema = `Slide atual (índice ${indice}, em JSON): ${JSON.stringify(slideAtual)}
-Guidelines de marca da empresa: ${empresa.brandGuidelines ? JSON.stringify(empresa.brandGuidelines) : "nenhuma definida"}`;
+Guidelines de marca da empresa: ${empresa.brandGuidelines ? JSON.stringify(empresa.brandGuidelines) : "nenhuma definida"}${notaFechamento}`;
 
   const turno = await dispararTurnoChat<MudancasSlide>({
     skillChave: "diretor-arte-chat",
@@ -71,6 +75,11 @@ Guidelines de marca da empresa: ${empresa.brandGuidelines ? JSON.stringify(empre
   if (slideNovo.tipo === "passo") {
     if (mudancas.novoTexto !== undefined) slideNovo.texto = mudancas.novoTexto;
     if (mudancas.novoBadge !== undefined) slideNovo.badge = mudancas.novoBadge;
+  } else if (slideNovo.tipo === "fechamento") {
+    // O slide de fechamento não tem "texto" próprio — a linha "Siga e acompanhe X" abaixo
+    // do título é gerada a partir do nome da empresa. "novoTexto" aqui vira o override
+    // dessa linha (ex.: pra usar o @ do Instagram em vez do nome oficial da empresa).
+    if (mudancas.novoTexto !== undefined) slideNovo.subtitulo = mudancas.novoTexto;
   }
   if (slideNovo.tipo === "capa" || slideNovo.tipo === "passo") {
     if (mudancas.removerImagem) slideNovo.promptFoto = undefined;

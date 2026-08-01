@@ -66,14 +66,18 @@ calendarioRouter.patch("/:id", async (req, res) => {
 });
 
 calendarioRouter.delete("/:id", async (req, res) => {
-  const item = await prisma.calendarioItem.findUnique({
-    where: { id: req.params.id },
-    include: { conteudos: { include: { publicacoes: true } } },
-  });
+  const existe = await prisma.calendarioItem.findUnique({ where: { id: req.params.id } });
+  if (!existe) return res.status(404).json({ error: "Item de calendário não encontrado" });
+
+  // Recalcula antes de checar — garante que o status usado aqui é o mesmo que a tela já
+  // mostra (a mesma fonte de verdade do frontend), mesmo que alguma tentativa de publicação
+  // anterior tenha falhado em sincronizar isso a tempo. Só bloqueia exclusão se o item está
+  // "publicado" de verdade (todas as redes-alvo publicadas); "erro" sempre pode ser excluído.
+  await atualizarStatusAposPublicacao(req.params.id);
+  const item = await prisma.calendarioItem.findUnique({ where: { id: req.params.id } });
   if (!item) return res.status(404).json({ error: "Item de calendário não encontrado" });
 
-  const jaPublicado = item.conteudos.some((c) => c.publicacoes.some((p) => p.status === "publicado"));
-  if (jaPublicado) {
+  if (item.status === "publicado") {
     return res.status(409).json({ error: "Não é possível excluir uma postagem que já foi publicada." });
   }
 

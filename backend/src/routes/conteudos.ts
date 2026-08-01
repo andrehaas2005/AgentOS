@@ -82,6 +82,11 @@ conteudosRouter.post("/:id/publicar", async (req, res) => {
     await atualizarStatusAposPublicacao(conteudo.calendarioId);
     res.status(201).json({ ok: true });
   } catch (erro) {
+    // Recalcula mesmo na falha — sem isso o status do agendamento pode ficar desatualizado
+    // (ex: preso em "aprovado") depois de uma tentativa que falhou, escondendo o erro real.
+    const conteudo = await prisma.conteudo.findUnique({ where: { id: req.params.id } });
+    if (conteudo) await atualizarStatusAposPublicacao(conteudo.calendarioId);
+
     if (erro instanceof PublicacaoInstagramError) {
       const status = erro.tipo === "duplicado" ? 409 : 400;
       return res.status(status).json({ error: erro.message });
@@ -121,6 +126,11 @@ conteudosRouter.post("/:id/publicar-linkedin", async (req, res) => {
     await atualizarStatusAposPublicacao(conteudo.calendarioId);
     res.status(201).json({ ok: true });
   } catch (erro) {
+    // Recalcula mesmo na falha — sem isso o status do agendamento pode ficar desatualizado
+    // (ex: preso em "aprovado") depois de uma tentativa que falhou, escondendo o erro real.
+    const conteudo = await prisma.conteudo.findUnique({ where: { id: req.params.id } });
+    if (conteudo) await atualizarStatusAposPublicacao(conteudo.calendarioId);
+
     if (erro instanceof PublicacaoLinkedinError) {
       const status = erro.tipo === "duplicado" ? 409 : 400;
       return res.status(status).json({ error: erro.message });

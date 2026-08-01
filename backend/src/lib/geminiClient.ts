@@ -5,6 +5,11 @@ const MODELO_IMAGEM = process.env.GEMINI_MODELO_IMAGEM ?? "gemini-2.5-flash-imag
 
 export class GeminiError extends Error {}
 class GeminiTransitorioError extends GeminiError {}
+// Subclasse específica pra quando o Gemini responde 200 mas o texto não é um JSON válido
+// (acontece — sem enforcement real de schema em 100% dos casos) — permite ao llmClient
+// tratar isso como recuperável (tentar de novo/escalar) sem confundir com um erro real de
+// API ou de cota.
+export class GeminiJsonInvalidoError extends GeminiError {}
 
 type ParteResposta = { text?: string; inlineData?: { mimeType: string; data: string } };
 
@@ -79,7 +84,7 @@ export async function gerarJson<T>(
   try {
     return JSON.parse(texto) as T;
   } catch {
-    throw new GeminiError(`Gemini retornou JSON inválido: ${texto.slice(0, 300)}`);
+    throw new GeminiJsonInvalidoError(`Gemini retornou JSON inválido: ${texto.slice(0, 300)}`);
   }
 }
 

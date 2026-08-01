@@ -160,6 +160,7 @@ export async function executarAgenteCeo(calendarioItemId: string) {
             },
             required: ["legenda", "hashtags", "cta"],
           },
+          { empresaId: item.empresaId },
         ),
     );
 
@@ -210,6 +211,7 @@ export async function executarAgenteCeo(calendarioItemId: string) {
               },
               required: ["estilo"],
             },
+            { empresaId: item.empresaId },
           ),
       );
 
@@ -235,6 +237,7 @@ export async function executarAgenteCeo(calendarioItemId: string) {
               properties: { promptImagem: { type: "STRING" } },
               required: ["promptImagem"],
             },
+            { empresaId: item.empresaId },
           ),
       );
       promptImagem = conteudoArte.promptImagem;
@@ -270,6 +273,7 @@ export async function executarAgenteCeo(calendarioItemId: string) {
           },
           required: ["aprovado", "observacoes", "legendaFinal", "hashtagsFinal", "ctaFinal"],
         },
+        { empresaId: item.empresaId },
       ),
     );
 

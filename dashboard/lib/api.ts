@@ -54,7 +54,15 @@ export type CalendarioItem = {
     id: string;
     texto: string | null;
     metadata?: ConteudoMetadata | null;
-    publicacoes: { rede: string; status: string; externalPostId: string | null; log: string | null; link: string | null }[];
+    publicacoes: {
+      id: string;
+      rede: string;
+      status: string;
+      externalPostId: string | null;
+      log: string | null;
+      link: string | null;
+      createdAt: string;
+    }[];
   }[];
 };
 

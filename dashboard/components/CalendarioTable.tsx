@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { EmpresaAvatar } from "./EmpresaAvatar";
 import { EditarPostagemModal } from "./EditarPostagemModal";
+import { HistoricoAgendamentoModal } from "./HistoricoAgendamentoModal";
 import { excluirCalendarioItem, type CalendarioItem } from "@/lib/api";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -57,6 +58,7 @@ export function CalendarioTable({
 }) {
   const router = useRouter();
   const [editando, setEditando] = useState<CalendarioItem | null>(null);
+  const [historico, setHistorico] = useState<CalendarioItem | null>(null);
   const [excluindoId, setExcluindoId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -136,17 +138,29 @@ export function CalendarioTable({
                   ) : null}
                 </td>
                 <td className="px-4 py-3">
-                  <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${estilo.badge}`}>
-                    {STATUS_LABEL[item.status] ?? item.status}
-                  </span>
-                  {publicacaoOk && (
-                    <div className="mt-1 text-xs text-green-400">✓ Publicado em {publicacaoOk.rede}</div>
-                  )}
-                  {publicacaoErro && (
-                    <div className="mt-1 max-w-[16rem] truncate text-xs text-red-400" title={publicacaoErro.log ?? ""}>
-                      Falha em {publicacaoErro.rede}: {publicacaoErro.log ?? "erro desconhecido"}
-                    </div>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => setHistorico(item)}
+                    className="text-left"
+                    title="Ver histórico de publicação"
+                  >
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-xs font-medium hover:brightness-110 ${estilo.badge}`}
+                    >
+                      {STATUS_LABEL[item.status] ?? item.status}
+                    </span>
+                    {publicacaoOk && (
+                      <div className="mt-1 text-xs text-green-400">✓ Publicado em {publicacaoOk.rede}</div>
+                    )}
+                    {publicacaoErro && (
+                      <div
+                        className="mt-1 max-w-[16rem] truncate text-xs text-red-400"
+                        title={publicacaoErro.log ?? ""}
+                      >
+                        Falha em {publicacaoErro.rede}: {publicacaoErro.log ?? "erro desconhecido"}
+                      </div>
+                    )}
+                  </button>
                 </td>
                 <td className="px-4 py-3 text-right whitespace-nowrap">
                   <button
@@ -175,6 +189,10 @@ export function CalendarioTable({
 
       {editando && (
         <EditarPostagemModal item={editando} onClose={() => setEditando(null)} />
+      )}
+
+      {historico && (
+        <HistoricoAgendamentoModal item={historico} onClose={() => setHistorico(null)} />
       )}
     </div>
   );

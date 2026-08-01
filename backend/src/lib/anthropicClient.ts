@@ -1,3 +1,5 @@
+import { extrairJson } from "./extrairJson";
+
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
 const MODELO_TEXTO = process.env.ANTHROPIC_MODELO_TEXTO ?? "claude-sonnet-5";
@@ -58,7 +60,7 @@ export async function gerarJson<T>(systemPrompt: string, prompt: string, schemaD
     `${systemPrompt}\n\nResponda SOMENTE com um JSON válido (sem markdown, sem texto antes ou depois) seguindo este formato: ${schemaDescricao}`,
     prompt,
   );
-  const limpo = texto.trim().replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
+  const limpo = extrairJson(texto);
   try {
     return JSON.parse(limpo) as T;
   } catch {

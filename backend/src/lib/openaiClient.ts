@@ -1,3 +1,5 @@
+import { extrairJson } from "./extrairJson";
+
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
 const MODELO_TEXTO = process.env.OPENAI_MODELO_TEXTO ?? "gpt-4o-mini";
@@ -55,7 +57,7 @@ export async function gerarJson<T>(systemPrompt: string, prompt: string, schemaD
     },
     { role: "user", content: prompt },
   ]);
-  const limpo = texto.trim().replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
+  const limpo = extrairJson(texto);
   try {
     return JSON.parse(limpo) as T;
   } catch {

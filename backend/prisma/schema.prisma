@@ -136,6 +136,19 @@ model AgenteCustomizado {
   @@map("agentes_customizados")
 }
 
+model SkillAgente {
+  chave            String   @id
+  nome             String
+  descricao        String
+  descricaoPadrao  String   @map("descricao_padrao")
+  prompt           String
+  promptPadrao     String   @map("prompt_padrao")
+  modelo           String
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  @@map("skills_agentes")
+}
+
 model LayoutEscritorio {
   id           String   @id @default("singleton")
   dados        Json

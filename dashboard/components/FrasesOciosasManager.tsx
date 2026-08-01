@@ -163,7 +163,7 @@ export function FrasesOciosasManager() {
         <p className="text-sm text-gray-500">Nenhuma frase cadastrada ainda.</p>
       )}
 
-      <div className="flex flex-col gap-2">
+      <div className="flex max-h-96 flex-col gap-2 overflow-y-auto pr-1">
         {frases.map((frase) => (
           <LinhaFrase key={frase.id} frase={frase} onMudou={buscar} />
         ))}

@@ -1,8 +1,9 @@
 "use client";
 
-import { X, ExternalLink } from "lucide-react";
+import { useState } from "react";
+import { X, ExternalLink, RotateCw } from "lucide-react";
 import { EmpresaAvatar } from "./EmpresaAvatar";
-import type { CalendarioItem } from "@/lib/api";
+import { executarCalendarioItem, type CalendarioItem } from "@/lib/api";
 
 const STATUS_LABEL: Record<string, string> = {
   planejado: "Planejado",
@@ -27,14 +28,29 @@ function formatarDataHoraBR(iso: string): string {
 export function HistoricoAgendamentoModal({
   item,
   onClose,
+  onExecutado,
 }: {
   item: CalendarioItem;
   onClose: () => void;
+  onExecutado?: () => void;
 }) {
   const conteudo = item.conteudos?.[0];
   const historico = [...(conteudo?.publicacoes ?? [])].sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
   );
+  const temErroDetalhado = Boolean(item.ultimoErro) || historico.some((p) => p.status === "erro" && p.log);
+  const [executando, setExecutando] = useState(false);
+
+  async function tentarNovamente() {
+    setExecutando(true);
+    const resultado = await executarCalendarioItem(item.id);
+    setExecutando(false);
+    if (!resultado.ok) {
+      window.alert(resultado.erro ?? "Não foi possível executar novamente.");
+    }
+    onExecutado?.();
+    onClose();
+  }
 
   return (
     <div
@@ -62,12 +78,32 @@ export function HistoricoAgendamentoModal({
           </button>
         </div>
 
-        <div className="mb-4 flex items-center gap-2">
-          <span className="text-[11px] uppercase tracking-wide text-gray-500">Status atual</span>
-          <span className="rounded-full bg-surface px-2 py-0.5 text-xs font-medium text-gray-200">
-            {STATUS_LABEL[item.status] ?? item.status}
-          </span>
+        <div className="mb-4 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] uppercase tracking-wide text-gray-500">Status atual</span>
+            <span className="rounded-full bg-surface px-2 py-0.5 text-xs font-medium text-gray-200">
+              {STATUS_LABEL[item.status] ?? item.status}
+            </span>
+          </div>
+          {item.status === "erro" && (
+            <button
+              type="button"
+              onClick={tentarNovamente}
+              disabled={executando}
+              className="flex shrink-0 items-center gap-1.5 rounded-lg border border-border px-2.5 py-1 text-xs text-gray-300 hover:bg-surface hover:text-white disabled:opacity-50"
+            >
+              <RotateCw size={12} className={executando ? "animate-spin" : ""} />
+              {executando ? "Executando..." : "Tentar novamente"}
+            </button>
+          )}
         </div>
+
+        {item.status === "erro" && !temErroDetalhado && (
+          <p className="mb-4 rounded-md border border-dashed border-border bg-surface p-2 text-xs text-gray-500">
+            O motivo desse erro específico não foi registrado (aconteceu antes da causa passar a ser
+            salva). Clique em &quot;Tentar novamente&quot; — se falhar de novo, o erro completo vai aparecer aqui.
+          </p>
+        )}
 
         {item.briefing && (
           <div className="mb-4">

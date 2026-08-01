@@ -2,9 +2,10 @@ import path from "path";
 import fs from "fs";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "../db";
-import { NOMES_EXIBICAO, subagentes } from "./definicoes";
+import { NOMES_EXIBICAO } from "./definicoes";
 import { marcarAtivo, marcarInativo } from "./status";
 import { gerarTexto, gerarJson } from "../lib/llmClient";
+import { obterSkills } from "../lib/skillsAgentes";
 import { gerarUmaImagemBuffer } from "../lib/gerarImagemFallback";
 import { renderizarCarrosselEducativo, type SlideEducativo } from "../lib/slideRenderer";
 
@@ -133,12 +134,16 @@ export async function executarAgenteCeo(calendarioItemId: string) {
   const precisaVideo = TIPOS_QUE_PRECISAM_VIDEO.has(item.tipoPost);
   const contexto = contextoEmpresa(item);
   const inicioGeral = Date.now();
+  // Prompts editáveis pelo usuário (tela Agentes) — buscados uma vez por execução, não
+  // mais lidos direto da constante hardcoded em definicoes.ts (que agora só serve de
+  // seed/valor padrão da primeira vez).
+  const skills = await obterSkills();
 
   marcarAtivo("CEO", `Orquestrando ${item.tipoPost}`);
   try {
     const angulo = await rodarEtapa("estrategista-conteudo", item.empresaId, "Definir ângulo do post", () =>
       gerarTexto(
-        subagentes["estrategista-conteudo"].prompt,
+        skills["estrategista-conteudo"].prompt,
         `${contexto}\n\nDefina o ângulo/tema central deste post.`,
       ),
     );
@@ -149,7 +154,7 @@ export async function executarAgenteCeo(calendarioItemId: string) {
       "Escrever legenda, hashtags e CTA",
       () =>
         gerarJson(
-          subagentes.redator.prompt,
+          skills.redator.prompt,
           `${contexto}\n\nÂngulo definido pelo Estrategista de Conteúdo:\n${angulo}\n\nEscreva a legenda final, as hashtags e o CTA.`,
           {
             type: "OBJECT",
@@ -185,7 +190,7 @@ export async function executarAgenteCeo(calendarioItemId: string) {
         "Definir estilo e conteúdo visual do carrossel",
         () =>
           gerarJson(
-            subagentes["diretor-arte"].prompt,
+            skills["diretor-arte"].prompt,
             `${contexto}\n\nÂngulo: ${angulo}\n\nLegenda: ${conteudoRedator.legenda}\n\nEste post é um CARROSSEL do Instagram. Escolha o estilo ("narrativo" ou "educativo") e produza o conteúdo correspondente.`,
             {
               type: "OBJECT",
@@ -230,7 +235,7 @@ export async function executarAgenteCeo(calendarioItemId: string) {
         "Gerar prompt descritivo de imagem",
         () =>
           gerarJson(
-            subagentes["diretor-arte"].prompt,
+            skills["diretor-arte"].prompt,
             `${contexto}\n\nÂngulo: ${angulo}\n\nLegenda: ${conteudoRedator.legenda}\n\nDescreva a peça visual (fotorrealista, com pessoas/natureza/ambientes reais quando fizer sentido para o nicho) e gere o prompt descritivo em inglês.`,
             {
               type: "OBJECT",
@@ -246,7 +251,7 @@ export async function executarAgenteCeo(calendarioItemId: string) {
     if (precisaVideo) {
       roteiroVideo = await rodarEtapa("diretor-video", item.empresaId, "Gerar roteiro de vídeo", () =>
         gerarTexto(
-          subagentes["diretor-video"].prompt,
+          skills["diretor-video"].prompt,
           `${contexto}\n\nÂngulo: ${angulo}\n\nLegenda: ${conteudoRedator.legenda}\n\nEscreva o roteiro do vídeo/reels.`,
         ),
       );
@@ -260,7 +265,7 @@ export async function executarAgenteCeo(calendarioItemId: string) {
       ctaFinal: string;
     }>("revisor-marca", item.empresaId, "Revisar conteúdo final contra guidelines", () =>
       gerarJson(
-        subagentes["revisor-marca"].prompt,
+        skills["revisor-marca"].prompt,
         `${contexto}\n\nConteúdo final produzido:\nLegenda: ${conteudoRedator.legenda}\nHashtags: ${conteudoRedator.hashtags.join(" ")}\nCTA: ${conteudoRedator.cta}\n${promptImagem ? `Prompt de imagem: ${promptImagem}\n` : ""}${promptImagens ? `Prompts das imagens do carrossel (${promptImagens.length} slides, em ordem):\n${promptImagens.map((p, i) => `${i + 1}. ${p}`).join("\n")}\n` : ""}${slidesEducativo ? resumoSlidesEducativo(slidesEducativo) : ""}${roteiroVideo ? `Roteiro de vídeo: ${roteiroVideo}\n` : ""}\nValide se está alinhado às guidelines. Se precisar de ajustes, já aplique-os e devolva a versão final corrigida.`,
         {
           type: "OBJECT",

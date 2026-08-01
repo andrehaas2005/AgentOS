@@ -162,6 +162,7 @@ export type AgenteStats = {
 };
 
 export type AgenteDefinicao = {
+  chave: string | null;
   nome: string;
   descricao: string;
   prompt: string | null;
@@ -370,6 +371,19 @@ export async function atualizarCalendarioItem(
   return { ok: resultado.ok, erro: resultado.erro };
 }
 
+// Reexecuta o CEO pra esse item (usado no "Tentar novamente" de um agendamento com
+// erro) — o backend já limpa ultimoErro antes de rodar e regrava se falhar de novo.
+export async function executarCalendarioItem(id: string): Promise<{ ok: boolean; erro?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/api/calendario/${id}/executar`, { method: "POST" });
+    const corpo = await res.json().catch(() => null);
+    if (!res.ok) return { ok: false, erro: corpo?.error ?? "Não foi possível executar novamente." };
+    return { ok: true };
+  } catch {
+    return { ok: false, erro: "Falha de conexão com o backend." };
+  }
+}
+
 export async function excluirCalendarioItem(id: string): Promise<{ ok: boolean; erro?: string }> {
   try {
     const res = await fetch(`${API_URL}/api/calendario/${id}`, { method: "DELETE" });
@@ -405,6 +419,39 @@ export function getAgentesStats(empresaId?: string) {
 
 export function getAgentesDefinicoes() {
   return safeFetch<AgenteDefinicao[]>("/api/agentes/definicoes", []);
+}
+
+export async function atualizarSkillAgente(
+  chave: string,
+  dados: { nome?: string; descricao?: string; prompt?: string },
+): Promise<{ ok: boolean; erro?: string }> {
+  const resultado = await patchJson(`/api/agentes/definicoes/${chave}`, dados);
+  return { ok: resultado.ok, erro: resultado.erro };
+}
+
+export async function restaurarSkillAgente(
+  chave: string,
+): Promise<{ ok: boolean; erro?: string; definicao?: AgenteDefinicao }> {
+  const resultado = await postJson(`/api/agentes/definicoes/${chave}/restaurar`, {});
+  return { ...resultado, definicao: resultado.dados as AgenteDefinicao | undefined };
+}
+
+export async function sugerirMelhoriaSkill(
+  chave: string,
+  pedido?: string,
+): Promise<{ ok: boolean; erro?: string; promptSugerido?: string; explicacao?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/api/agentes/definicoes/${chave}/sugestao`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pedido }),
+    });
+    const corpo = await res.json().catch(() => null);
+    if (!res.ok) return { ok: false, erro: corpo?.error ?? "Não foi possível gerar sugestão." };
+    return { ok: true, promptSugerido: corpo.promptSugerido, explicacao: corpo.explicacao };
+  } catch {
+    return { ok: false, erro: "Falha de conexão com o backend." };
+  }
 }
 
 export function getAgentesCustomizados() {

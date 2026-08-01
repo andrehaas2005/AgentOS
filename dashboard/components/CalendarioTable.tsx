@@ -192,7 +192,11 @@ export function CalendarioTable({
       )}
 
       {historico && (
-        <HistoricoAgendamentoModal item={historico} onClose={() => setHistorico(null)} />
+        <HistoricoAgendamentoModal
+          item={historico}
+          onClose={() => setHistorico(null)}
+          onExecutado={() => router.refresh()}
+        />
       )}
     </div>
   );

@@ -1,6 +1,8 @@
 import { prisma } from "../db";
 import {
   criarContainerImagem,
+  criarContainerImagemCarrossel,
+  criarContainerCarrossel,
   consultarStatusContainer,
   publicarContainer,
   obterPermalink,
@@ -58,13 +60,28 @@ export async function publicarConteudoNoInstagram(conteudoId: string) {
     throw new PublicacaoInstagramError("Este conteúdo não tem imagem para publicar.", "sem_midia");
   }
 
-  const imageUrl = `${PUBLIC_BASE_URL}${conteudo.midiaUrls[0]}`;
   const igUserId = credenciais.ig_user_id;
   const accessToken = credenciais.access_token;
+  const ehCarrossel = conteudo.calendario.tipoPost === "carrossel" && conteudo.midiaUrls.length > 1;
 
   try {
     const legenda = conteudo.texto ? comDisclosureAutomatico(conteudo.texto) : undefined;
-    const containerId = await criarContainerImagem(igUserId, accessToken, imageUrl, legenda);
+
+    let containerId: string;
+    if (ehCarrossel) {
+      const childrenIds: string[] = [];
+      for (const midiaUrl of conteudo.midiaUrls) {
+        const imageUrl = `${PUBLIC_BASE_URL}${midiaUrl}`;
+        const childId = await criarContainerImagemCarrossel(igUserId, accessToken, imageUrl);
+        await aguardarContainerPronto(childId, accessToken);
+        childrenIds.push(childId);
+      }
+      containerId = await criarContainerCarrossel(igUserId, accessToken, childrenIds, legenda);
+    } else {
+      const imageUrl = `${PUBLIC_BASE_URL}${conteudo.midiaUrls[0]}`;
+      containerId = await criarContainerImagem(igUserId, accessToken, imageUrl, legenda);
+    }
+
     await aguardarContainerPronto(containerId, accessToken);
     const externalPostId = await publicarContainer(igUserId, accessToken, containerId);
     const link = await obterPermalink(externalPostId, accessToken);

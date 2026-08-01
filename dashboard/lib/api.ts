@@ -70,6 +70,7 @@ export type ConteudoMetadata = {
   hashtags?: string[];
   cta?: string;
   promptImagem?: string;
+  promptImagens?: string[];
   roteiroVideo?: string;
   notasAgentesCustomizados?: { agente: string; nota: string }[];
 };

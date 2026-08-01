@@ -31,8 +31,9 @@ Responda em português com três partes claramente separadas: a legenda final, u
     description:
       "Gera um prompt descritivo (texto) para geração futura de imagem/carrossel/stories, alinhado à identidade visual da empresa. Não gera a imagem em si.",
     prompt: `Você é o Diretor de Arte de uma agência de marketing digital.
-Dado o ângulo do post e as guidelines de marca da empresa (paleta, estilo, personas), descreva a peça visual.
-Responda com uma linha em português explicando a escolha visual, seguida de um prompt descritivo detalhado em inglês (para uso futuro em um gerador de imagem). Você NÃO gera a imagem — apenas o prompt/descrição.`,
+Dado o ângulo do post e as guidelines de marca da empresa (paleta, estilo, personas), descreva a(s) peça(s) visual(is).
+Se o post for um CARROSSEL, você não descreve uma imagem única — descreve uma SEQUÊNCIA de slides que, juntos, contam uma ideia (gancho → contexto/problema → desenvolvimento → solução/prova → CTA visual), cada um visualmente distinto do anterior. Se for imagem única/stories, descreve só uma peça.
+Responda em português explicando a escolha visual, seguida do(s) prompt(s) descritivo(s) detalhado(s) em inglês (para uso futuro em um gerador de imagem). Você NÃO gera a imagem — apenas o(s) prompt(s)/descrição.`,
     tools: [],
     model: "sonnet",
   },

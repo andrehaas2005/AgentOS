@@ -1,6 +1,7 @@
 import { Image as ImageIcon, GalleryHorizontal, Sparkles, Video, Clapperboard, Film, FileText } from "lucide-react";
-import { urlPublica, type Conteudo } from "@/lib/api";
+import { type Conteudo } from "@/lib/api";
 import { EmpresaAvatar } from "./EmpresaAvatar";
+import { CarrosselMidia } from "./CarrosselMidia";
 import { EnviarMidiaControle } from "./EnviarMidiaControle";
 import { AprovarBotao } from "./AprovarBotao";
 import { PublicarInstagramPanel } from "./PublicarInstagramPanel";
@@ -29,11 +30,12 @@ const TIPO_ICON: Record<string, typeof ImageIcon> = {
 
 export function ConteudoPreviewCard({ conteudo }: { conteudo: Conteudo }) {
   const Icone = TIPO_ICON[conteudo.calendario.tipoPost] ?? FileText;
-  const promptVisual = conteudo.metadata?.promptImagem ?? conteudo.metadata?.roteiroVideo;
-  const midiaUrl = conteudo.midiaUrls[0];
+  const promptVisual =
+    conteudo.metadata?.promptImagem ?? conteudo.metadata?.promptImagens?.[0] ?? conteudo.metadata?.roteiroVideo;
+  const temMidia = conteudo.midiaUrls.length > 0;
   // Prompt visual é só uma descrição de mídia que ainda falta gerar/subir — assim que existe
   // mídia de verdade, o card deve mostrar a imagem em vez da prévia do prompt pra sempre.
-  const mostrarPromptVisual = promptVisual && !midiaUrl;
+  const mostrarPromptVisual = promptVisual && !temMidia;
 
   const contasSociais = conteudo.calendario.empresa.contasSociais;
   const temInstagram = contasSociais.some((c) => c.rede === "instagram" && c.status === "conectado");
@@ -68,9 +70,8 @@ export function ConteudoPreviewCard({ conteudo }: { conteudo: Conteudo }) {
             Prévia do prompt visual: &quot;{promptVisual}&quot;
           </p>
         </div>
-      ) : midiaUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={urlPublica(midiaUrl)} alt="" className="aspect-square w-full object-cover" />
+      ) : temMidia ? (
+        <CarrosselMidia urls={conteudo.midiaUrls} />
       ) : (
         <div className="flex aspect-square flex-col items-center justify-center gap-2 bg-gradient-to-br from-surface to-black/40 px-4 text-center">
           <Icone size={32} className="text-gray-500" />

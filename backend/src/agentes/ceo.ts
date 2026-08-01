@@ -28,6 +28,7 @@ type ConteudoEstruturado = {
   hashtags: string[];
   cta: string;
   promptImagem?: string;
+  promptImagens?: string[];
   roteiroVideo?: string;
   aprovado: boolean;
   observacoesRevisor: string;
@@ -84,25 +85,45 @@ Data/hora planejada: ${item.dataHora.toISOString()}
 Briefing: ${item.briefing ?? "nenhum briefing específico — use o nicho da empresa como base"}`;
 }
 
-async function gerarImagemDoPost(conteudoId: string, promptImagem: string): Promise<string | null> {
+async function gerarUmaImagemBuffer(promptImagem: string): Promise<Buffer | null> {
   const promptFinal = `${promptImagem}\n\nA imagem deve ser fotorrealista e visualmente atraente (pessoas, natureza, ambientes reais), não um gráfico de texto genérico.`;
-  const nomeArquivo = `${conteudoId}-${Date.now()}.jpg`;
-
-  let buffer: Buffer | null = null;
   try {
-    buffer = await gerarImagemReplicate(promptFinal);
+    return await gerarImagemReplicate(promptFinal);
   } catch (erroReplicate) {
     console.warn(`Geração de imagem via Replicate falhou, tentando Gemini: ${erroReplicate}`);
     try {
-      buffer = await gerarImagem(promptFinal);
+      return await gerarImagem(promptFinal);
     } catch (erroGemini) {
       console.warn(`Geração de imagem via Gemini também falhou (post seguirá sem mídia automática): ${erroGemini}`);
       return null;
     }
   }
+}
 
+async function gerarImagemDoPost(conteudoId: string, promptImagem: string): Promise<string | null> {
+  const buffer = await gerarUmaImagemBuffer(promptImagem);
+  if (!buffer) return null;
+  const nomeArquivo = `${conteudoId}-${Date.now()}.jpg`;
   fs.writeFileSync(path.join(PASTA_MIDIA, nomeArquivo), buffer);
   return `/uploads/conteudos/${nomeArquivo}`;
+}
+
+// Gera uma imagem por prompt, em ordem — cada slide do carrossel precisa manter a
+// sequência em que o Diretor de Arte desenhou a narrativa (gancho → ... → CTA).
+// Slides que falharem na geração são pulados (não travam o carrossel inteiro).
+async function gerarImagensCarrossel(conteudoId: string, prompts: string[]): Promise<string[]> {
+  const urls: string[] = [];
+  for (let i = 0; i < prompts.length; i++) {
+    const buffer = await gerarUmaImagemBuffer(prompts[i]);
+    if (!buffer) {
+      console.warn(`Slide ${i + 1}/${prompts.length} do carrossel ${conteudoId} não pôde ser gerado — pulando.`);
+      continue;
+    }
+    const nomeArquivo = `${conteudoId}-slide${i + 1}-${Date.now()}.jpg`;
+    fs.writeFileSync(path.join(PASTA_MIDIA, nomeArquivo), buffer);
+    urls.push(`/uploads/conteudos/${nomeArquivo}`);
+  }
+  return urls;
 }
 
 export async function executarAgenteCeo(calendarioItemId: string) {
@@ -152,9 +173,30 @@ export async function executarAgenteCeo(calendarioItemId: string) {
     conteudoRedator.hashtags = conteudoRedator.hashtags ?? [];
 
     let promptImagem: string | undefined;
+    let promptImagens: string[] | undefined;
     let roteiroVideo: string | undefined;
 
-    if (precisaArte) {
+    if (item.tipoPost === "carrossel") {
+      const conteudoArte = await rodarEtapa<{ promptImagens: string[] }>(
+        "diretor-arte",
+        item.empresaId,
+        "Gerar prompts das imagens do carrossel",
+        () =>
+          gerarJson(
+            subagentes["diretor-arte"].prompt,
+            `${contexto}\n\nÂngulo: ${angulo}\n\nLegenda: ${conteudoRedator.legenda}\n\nEste post é um CARROSSEL do Instagram: gere de 3 a 6 prompts de imagem (em inglês, fotorrealistas, com pessoas/ambientes reais quando fizer sentido para o nicho), um por slide, na ordem em que devem aparecer. Juntos eles precisam contar uma ideia/narrativa completa (ex: gancho → contexto/problema → desenvolvimento → solução/prova → CTA visual) — cada slide visualmente diferente do anterior, nunca repetindo a mesma cena.`,
+            {
+              type: "OBJECT",
+              properties: { promptImagens: { type: "ARRAY", items: { type: "STRING" } } },
+              required: ["promptImagens"],
+            },
+          ),
+      );
+      // Defensivo: fallback providers (OpenAI/Anthropic) podem devolver o array vazio.
+      promptImagens = conteudoArte.promptImagens && conteudoArte.promptImagens.length > 0
+        ? conteudoArte.promptImagens
+        : undefined;
+    } else if (precisaArte) {
       const conteudoArte = await rodarEtapa<{ promptImagem: string }>(
         "diretor-arte",
         item.empresaId,
@@ -191,7 +233,7 @@ export async function executarAgenteCeo(calendarioItemId: string) {
     }>("revisor-marca", item.empresaId, "Revisar conteúdo final contra guidelines", () =>
       gerarJson(
         subagentes["revisor-marca"].prompt,
-        `${contexto}\n\nConteúdo final produzido:\nLegenda: ${conteudoRedator.legenda}\nHashtags: ${conteudoRedator.hashtags.join(" ")}\nCTA: ${conteudoRedator.cta}\n${promptImagem ? `Prompt de imagem: ${promptImagem}\n` : ""}${roteiroVideo ? `Roteiro de vídeo: ${roteiroVideo}\n` : ""}\nValide se está alinhado às guidelines. Se precisar de ajustes, já aplique-os e devolva a versão final corrigida.`,
+        `${contexto}\n\nConteúdo final produzido:\nLegenda: ${conteudoRedator.legenda}\nHashtags: ${conteudoRedator.hashtags.join(" ")}\nCTA: ${conteudoRedator.cta}\n${promptImagem ? `Prompt de imagem: ${promptImagem}\n` : ""}${promptImagens ? `Prompts das imagens do carrossel (${promptImagens.length} slides, em ordem):\n${promptImagens.map((p, i) => `${i + 1}. ${p}`).join("\n")}\n` : ""}${roteiroVideo ? `Roteiro de vídeo: ${roteiroVideo}\n` : ""}\nValide se está alinhado às guidelines. Se precisar de ajustes, já aplique-os e devolva a versão final corrigida.`,
         {
           type: "OBJECT",
           properties: {
@@ -211,6 +253,7 @@ export async function executarAgenteCeo(calendarioItemId: string) {
       hashtags: revisao.hashtagsFinal ?? conteudoRedator.hashtags,
       cta: revisao.ctaFinal,
       promptImagem,
+      promptImagens,
       roteiroVideo,
       aprovado: revisao.aprovado,
       observacoesRevisor: revisao.observacoes,
@@ -230,7 +273,7 @@ export async function executarAgenteCeo(calendarioItemId: string) {
           const nota = await rodarEtapa(agenteCustom.nome, item.empresaId, `Executando ${agenteCustom.nome}`, () =>
             gerarTexto(
               agenteCustom.prompt,
-              `${contexto}\n\nConteúdo final produzido pelo time:\nLegenda: ${estruturado.legenda}\nHashtags: ${estruturado.hashtags.join(" ")}\nCTA: ${estruturado.cta}\n${promptImagem ? `Prompt de imagem: ${promptImagem}\n` : ""}${roteiroVideo ? `Roteiro de vídeo: ${roteiroVideo}\n` : ""}\nDê sua contribuição conforme a sua função.`,
+              `${contexto}\n\nConteúdo final produzido pelo time:\nLegenda: ${estruturado.legenda}\nHashtags: ${estruturado.hashtags.join(" ")}\nCTA: ${estruturado.cta}\n${promptImagem ? `Prompt de imagem: ${promptImagem}\n` : ""}${promptImagens ? `Prompts das imagens do carrossel (${promptImagens.length} slides):\n${promptImagens.map((p, i) => `${i + 1}. ${p}`).join("\n")}\n` : ""}${roteiroVideo ? `Roteiro de vídeo: ${roteiroVideo}\n` : ""}\nDê sua contribuição conforme a sua função.`,
             ),
           );
           notas.push({ agente: agenteCustom.nome, nota });
@@ -261,7 +304,12 @@ export async function executarAgenteCeo(calendarioItemId: string) {
       },
     });
 
-    if (precisaArte && promptImagem) {
+    if (promptImagens && promptImagens.length > 0) {
+      const midiaUrls = await gerarImagensCarrossel(conteudo.id, promptImagens);
+      if (midiaUrls.length > 0) {
+        await prisma.conteudo.update({ where: { id: conteudo.id }, data: { midiaUrls: { push: midiaUrls } } });
+      }
+    } else if (precisaArte && promptImagem) {
       const midiaUrl = await gerarImagemDoPost(conteudo.id, promptImagem);
       if (midiaUrl) {
         await prisma.conteudo.update({ where: { id: conteudo.id }, data: { midiaUrls: { push: midiaUrl } } });

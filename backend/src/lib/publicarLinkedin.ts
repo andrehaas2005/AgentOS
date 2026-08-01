@@ -42,26 +42,27 @@ export async function publicarConteudoNoLinkedin(conteudoId: string) {
   const authorUrn = `urn:li:person:${credenciais.linkedin_sub}`;
 
   try {
-    // Imagem é opcional — se o conteúdo tiver mídia, sobe ela pro LinkedIn antes do post
-    // (posts com imagem chamam mais atenção que texto solto); sem mídia, publica só o texto.
-    let imagemUrn: string | undefined;
-    if (conteudo.midiaUrls.length > 0) {
-      const imagemUrl = `${PUBLIC_BASE_URL}${conteudo.midiaUrls[0]}`;
+    // Imagem é opcional — se o conteúdo tiver mídia, sobe cada uma pro LinkedIn antes do
+    // post (posts com imagem chamam mais atenção que texto solto; carrossel vira multiImage);
+    // sem mídia, publica só o texto.
+    const imagemUrns: string[] = [];
+    for (const midiaUrl of conteudo.midiaUrls) {
+      const imagemUrl = `${PUBLIC_BASE_URL}${midiaUrl}`;
       const respostaImagem = await fetch(imagemUrl);
       if (!respostaImagem.ok) {
         throw new PublicacaoLinkedinError(`Não foi possível baixar a imagem do conteúdo (${respostaImagem.status}).`, "api");
       }
       const bufferImagem = Buffer.from(await respostaImagem.arrayBuffer());
-      const { uploadUrl, imagemUrn: urn } = await inicializarUploadImagem(credenciais.access_token, authorUrn);
+      const { uploadUrl, imagemUrn } = await inicializarUploadImagem(credenciais.access_token, authorUrn);
       await enviarImagemLinkedin(credenciais.access_token, uploadUrl, bufferImagem);
-      imagemUrn = urn;
+      imagemUrns.push(imagemUrn);
     }
 
     const externalPostId = await criarPost(
       credenciais.access_token,
       authorUrn,
       comDisclosureAutomatico(conteudo.texto),
-      imagemUrn,
+      imagemUrns.length > 0 ? imagemUrns : undefined,
     );
     const link = `https://www.linkedin.com/feed/update/${externalPostId}/`;
 

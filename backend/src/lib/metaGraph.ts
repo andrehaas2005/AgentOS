@@ -155,6 +155,48 @@ export async function criarContainerImagem(
   return resposta.id;
 }
 
+// Container filho de um carrossel — mesma chamada de criarContainerImagem, mas sem
+// caption (a legenda vai só no container pai) e com is_carousel_item=true.
+export async function criarContainerImagemCarrossel(
+  igUserId: string,
+  accessToken: string,
+  imageUrl: string,
+): Promise<string> {
+  const params = new URLSearchParams({
+    image_url: imageUrl,
+    is_carousel_item: "true",
+    access_token: accessToken,
+  });
+
+  const resposta = await chamarGraph<{ id: string }>(`${GRAPH_URL}/${igUserId}/media`, {
+    method: "POST",
+    body: params,
+  });
+  return resposta.id;
+}
+
+// Container pai do carrossel — referencia os containers filhos já prontos (FINISHED)
+// via `children`. Também precisa aguardar status_code=FINISHED antes de publicar.
+export async function criarContainerCarrossel(
+  igUserId: string,
+  accessToken: string,
+  childrenIds: string[],
+  legenda?: string,
+): Promise<string> {
+  const params = new URLSearchParams({
+    media_type: "CAROUSEL",
+    children: childrenIds.join(","),
+    access_token: accessToken,
+  });
+  if (legenda) params.set("caption", legenda);
+
+  const resposta = await chamarGraph<{ id: string }>(`${GRAPH_URL}/${igUserId}/media`, {
+    method: "POST",
+    body: params,
+  });
+  return resposta.id;
+}
+
 export async function consultarStatusContainer(containerId: string, accessToken: string): Promise<string> {
   const params = new URLSearchParams({ fields: "status_code", access_token: accessToken });
   const resposta = await chamarGraph<{ status_code: string }>(`${GRAPH_URL}/${containerId}?${params.toString()}`);

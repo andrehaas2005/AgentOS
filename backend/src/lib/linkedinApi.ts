@@ -110,14 +110,14 @@ export async function enviarImagemLinkedin(accessToken: string, uploadUrl: strin
   }
 }
 
-// Escopo v1: posts de texto no feed pessoal, com imagem única opcional — sem carrossel/vídeo.
-// A Posts API do LinkedIn exige o header LinkedIn-Version (formato YYYYMM) e retorna o
-// id do post criado no header x-restli-id (corpo da resposta 201 vem vazio).
+// Escopo v1: posts de texto no feed pessoal, com imagem única ou múltiplas (multiImage) —
+// sem vídeo/documento. A Posts API exige o header LinkedIn-Version (formato YYYYMM) e
+// retorna o id do post criado no header x-restli-id (corpo da resposta 201 vem vazio).
 export async function criarPost(
   accessToken: string,
   authorUrn: string,
   texto: string,
-  imagemUrn?: string,
+  imagemUrns?: string[],
 ): Promise<string> {
   const body: Record<string, unknown> = {
     author: authorUrn,
@@ -127,8 +127,10 @@ export async function criarPost(
     lifecycleState: "PUBLISHED",
     isReshareDisabledByAuthor: false,
   };
-  if (imagemUrn) {
-    body.content = { media: { id: imagemUrn } };
+  if (imagemUrns && imagemUrns.length > 1) {
+    body.content = { multiImage: { images: imagemUrns.map((id) => ({ id })) } };
+  } else if (imagemUrns && imagemUrns.length === 1) {
+    body.content = { media: { id: imagemUrns[0] } };
   }
 
   const res = await fetch(`${API_URL}/rest/posts`, {

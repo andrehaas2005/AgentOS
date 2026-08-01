@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import { getAgenteTimeline, type ExecucaoAgente } from "@/lib/api";
-import { SPRITE_POR_AGENTE } from "@/lib/agentes";
+import { spriteDoAgente } from "@/lib/agentes";
 
 function tempoRelativo(iso: string) {
   const diffMs = Date.now() - new Date(iso).getTime();
@@ -55,15 +55,13 @@ export function PainelAgente({ nome, ativo, descricaoAtiva, falaOciosa, onClose 
     <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/60 p-4">
       <div className="max-h-full w-full max-w-sm overflow-y-auto rounded-xl border border-border bg-panel p-4">
         <div className="mb-3 flex items-center gap-3">
-          {SPRITE_POR_AGENTE[nome] && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={SPRITE_POR_AGENTE[nome]}
-              alt={nome}
-              className="h-9 w-9"
-              style={{ imageRendering: "pixelated" }}
-            />
-          )}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={spriteDoAgente(nome)}
+            alt={nome}
+            className="h-9 w-9"
+            style={{ imageRendering: "pixelated" }}
+          />
           <div className="flex-1">
             <h3 className="text-sm font-semibold text-white">{nome}</h3>
             <p className={`text-xs ${ativo ? "text-emerald-400" : "text-amber-400"}`}>

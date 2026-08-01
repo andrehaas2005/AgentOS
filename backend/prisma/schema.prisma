@@ -135,6 +135,14 @@ model AgenteCustomizado {
   @@map("agentes_customizados")
 }
 
+model LayoutEscritorio {
+  id           String   @id @default("singleton")
+  dados        Json
+  atualizadoEm DateTime @updatedAt @map("atualizado_em")
+
+  @@map("layout_escritorio")
+}
+
 model ExecucaoAgente {
   id          String   @id @default(uuid())
   agente      String

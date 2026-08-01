@@ -1,3 +1,5 @@
+import { LAYOUT_ESCRITORIO_PADRAO, type LayoutEscritorioDados } from "./layoutEscritorioPadrao";
+
 function resolverApiUrl(): string {
   if (typeof window === "undefined") {
     // Server Components rodam no processo Node do container e não podem usar
@@ -240,6 +242,20 @@ async function patchJson(path: string, dados: unknown): Promise<{ ok: boolean; e
   try {
     const res = await fetch(`${API_URL}${path}`, {
       method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(dados),
+    });
+    if (!res.ok) return { ok: false, erro: "Não foi possível salvar." };
+    return { ok: true, dados: await res.json() };
+  } catch {
+    return { ok: false, erro: "Falha de conexão com o backend." };
+  }
+}
+
+async function putJson(path: string, dados: unknown): Promise<{ ok: boolean; erro?: string; dados?: unknown }> {
+  try {
+    const res = await fetch(`${API_URL}${path}`, {
+      method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(dados),
     });
@@ -527,4 +543,15 @@ export async function publicarConteudoLinkedin(id: string): Promise<{ ok: boolea
   } catch {
     return { ok: false, erro: "Falha de conexão com o backend." };
   }
+}
+
+export function getLayoutEscritorio() {
+  return safeFetch<LayoutEscritorioDados>("/api/escritorio/layout", LAYOUT_ESCRITORIO_PADRAO);
+}
+
+export async function salvarLayoutEscritorio(
+  dados: LayoutEscritorioDados,
+): Promise<{ ok: boolean; erro?: string }> {
+  const resultado = await putJson("/api/escritorio/layout", dados);
+  return { ok: resultado.ok, erro: resultado.erro };
 }

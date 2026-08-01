@@ -13,6 +13,7 @@ import { oauthInstagramRouter } from "./routes/oauthInstagram";
 import { oauthLinkedinRouter } from "./routes/oauthLinkedin";
 import { frasesRouter } from "./routes/frases";
 import { agentesCustomizadosRouter } from "./routes/agentesCustomizados";
+import { escritorioRouter } from "./routes/escritorio";
 import { iniciarRenovacaoAutomaticaDeTokens } from "./lib/renovarTokens";
 import { iniciarAgendadorExecucao } from "./lib/agendadorExecucao";
 
@@ -35,6 +36,7 @@ app.use("/api/oauth/instagram", oauthInstagramRouter);
 app.use("/api/oauth/linkedin", oauthLinkedinRouter);
 app.use("/api/frases", frasesRouter);
 app.use("/api/agentes-customizados", agentesCustomizadosRouter);
+app.use("/api/escritorio", escritorioRouter);
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 4000;
 app.listen(PORT, () => {

@@ -1,25 +1,19 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { AGENTES, SPRITE_POR_AGENTE } from "@/lib/agentes";
-import { getAgentesStatus, getFrasesOciosas, type StatusAtivo, type FraseOciosa } from "@/lib/api";
+import { agentesCompletos, spriteDoAgente } from "@/lib/agentes";
+import {
+  getAgentesCustomizados,
+  getAgentesStatus,
+  getFrasesOciosas,
+  getLayoutEscritorio,
+  type AgenteCustomizado,
+  type FraseOciosa,
+  type StatusAtivo,
+} from "@/lib/api";
+import { LAYOUT_ESCRITORIO_PADRAO, type LayoutEscritorioDados } from "@/lib/layoutEscritorioPadrao";
 import { PersonagemCena } from "./PersonagemCena";
 import { PainelAgente } from "./PainelAgente";
-
-// Um assento fixo na copa e uma mesa fixa por agente, pra ninguém se sobrepor
-// conforme o número de agentes ativos muda. Coordenadas são % da cena inteira
-// (sala de trabalho ocupa 0-55%, lounge ocupa 55-100%).
-const POSICOES: Record<string, { copa: { x: number; y: number }; mesa: { x: number; y: number } }> = {
-  CEO: { copa: { x: 60, y: 25 }, mesa: { x: 16, y: 20 } },
-  "Estrategista de Conteúdo": { copa: { x: 95, y: 25 }, mesa: { x: 16, y: 40 } },
-  Redator: { copa: { x: 58, y: 85 }, mesa: { x: 16, y: 60 } },
-  "Diretor de Arte": { copa: { x: 70, y: 90 }, mesa: { x: 16, y: 80 } },
-  "Diretor de Vídeo": { copa: { x: 85, y: 90 }, mesa: { x: 40, y: 30 } },
-  "Revisor de Marca": { copa: { x: 95, y: 60 }, mesa: { x: 40, y: 50 } },
-  Publicador: { copa: { x: 60, y: 60 }, mesa: { x: 40, y: 70 } },
-};
-
-const DESKS = Object.values(POSICOES).map((pos) => pos.mesa);
 
 // Limites da copa (sala da direita) — evita que o passeio ocioso jogue o
 // personagem pra cima da parede ou da sala de trabalho.
@@ -45,15 +39,39 @@ function pontoProximo(base: { x: number; y: number }): { x: number; y: number } 
   };
 }
 
+function backgroundSizeParaTextura(textura: string): string {
+  return textura === "floor-checker.png" ? "28px 28px" : "40px 40px";
+}
+
 type Fala = { texto: string; expira: number };
 
 export function EscritorioAgentes({ altura = "h-[320px]" }: { altura?: string }) {
+  const [layout, setLayout] = useState<LayoutEscritorioDados>(LAYOUT_ESCRITORIO_PADRAO);
+  const [customizados, setCustomizados] = useState<AgenteCustomizado[]>([]);
   const [ativos, setAtivos] = useState<StatusAtivo[]>([]);
   const [frases, setFrases] = useState<FraseOciosa[]>([]);
   const [falasOciosos, setFalasOciosos] = useState<Record<string, Fala>>({});
   const [selecionado, setSelecionado] = useState<string | null>(null);
   const [passeioOcioso, setPasseioOcioso] = useState<Record<string, { x: number; y: number }>>({});
   const [ficouOciosoEm, setFicouOciosoEm] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    let cancelado = false;
+    async function buscar() {
+      const [dadosLayout, dadosCustomizados] = await Promise.all([
+        getLayoutEscritorio(),
+        getAgentesCustomizados(),
+      ]);
+      if (!cancelado) {
+        setLayout(dadosLayout);
+        setCustomizados(dadosCustomizados);
+      }
+    }
+    buscar();
+    return () => {
+      cancelado = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelado = false;
@@ -83,17 +101,25 @@ export function EscritorioAgentes({ altura = "h-[320px]" }: { altura?: string })
     };
   }, []);
 
+  const agentes = agentesCompletos(customizados);
+  const mesaPorAgente = new Map(layout.mesas.map((mesa) => [mesa.agenteId, mesa]));
   const ativoPorNome = new Map(ativos.map((ativo) => [ativo.agente, ativo]));
 
-  // Ref pra o intervalo de passeio (6s) ler sempre quem está ativo agora sem
+  // Refs pra os intervalos (6s/2.2s) lerem sempre o estado mais recente sem
   // precisar reiniciar a cada 4s (quando o polling de status muda `ativos`) —
   // um intervalo de período maior que o do polling nunca dispararia se
-  // dependesse de `ativos` diretamente no array de dependências do efeito.
+  // dependesse desses valores diretamente no array de dependências do efeito.
   const ativoPorNomeRef = useRef(ativoPorNome);
   ativoPorNomeRef.current = ativoPorNome;
 
   const frasesRef = useRef(frases);
   frasesRef.current = frases;
+
+  const agentesRef = useRef(agentes);
+  agentesRef.current = agentes;
+
+  const mesaPorAgenteRef = useRef(mesaPorAgente);
+  mesaPorAgenteRef.current = mesaPorAgente;
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -103,9 +129,9 @@ export function EscritorioAgentes({ altura = "h-[320px]" }: { altura?: string })
         for (const [nome, fala] of Object.entries(prev)) {
           if (fala.expira > agora) proximo[nome] = fala;
         }
-        const ociosos = AGENTES.map((a) => a.nome).filter(
-          (nome) => !ativoPorNome.has(nome) && !proximo[nome],
-        );
+        const ociosos = agentesRef.current
+          .map((a) => a.nome)
+          .filter((nome) => !ativoPorNome.has(nome) && !proximo[nome]);
         if (ociosos.length > 0 && Object.keys(proximo).length < 2 && Math.random() < 0.5) {
           const nome = ociosos[Math.floor(Math.random() * ociosos.length)];
           const texto = fraseAleatoriaPara(nome, frasesRef.current);
@@ -124,7 +150,7 @@ export function EscritorioAgentes({ altura = "h-[320px]" }: { altura?: string })
     setFicouOciosoEm((prev) => {
       let mudou = false;
       const proximo = { ...prev };
-      for (const agente of AGENTES) {
+      for (const agente of agentes) {
         const nome = agente.nome;
         if (ativoPorNome.has(nome)) {
           if (proximo[nome] !== undefined) {
@@ -139,7 +165,7 @@ export function EscritorioAgentes({ altura = "h-[320px]" }: { altura?: string })
       return mudou ? proximo : prev;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ativos]);
+  }, [ativos, customizados]);
 
   // A cada rodada, cada agente ocioso tem uma chance de "passear" pra um ponto
   // aleatório próximo dentro da copa — evita a cena parecer estática demais.
@@ -148,16 +174,16 @@ export function EscritorioAgentes({ altura = "h-[320px]" }: { altura?: string })
     const id = setInterval(() => {
       setPasseioOcioso((prev) => {
         const proximo = { ...prev };
-        for (const agente of AGENTES) {
+        for (const agente of agentesRef.current) {
           const nome = agente.nome;
-          const pos = POSICOES[nome];
-          if (!pos) continue;
+          const mesa = mesaPorAgenteRef.current.get(nome);
+          if (!mesa) continue;
           if (ativoPorNomeRef.current.has(nome)) {
             delete proximo[nome];
             continue;
           }
           if (Math.random() < 0.4) {
-            proximo[nome] = pontoProximo(pos.copa);
+            proximo[nome] = pontoProximo({ x: mesa.copaX, y: mesa.copaY });
           }
         }
         return proximo;
@@ -191,168 +217,77 @@ export function EscritorioAgentes({ altura = "h-[320px]" }: { altura?: string })
         }}
       />
 
-      {/* sala de trabalho (esquerda) */}
-      <div
-        className="absolute inset-y-0 left-0 z-0 w-[55%] border-r border-border/60"
-        style={{
-          backgroundImage: "url(/sprites/floor-wood.png)",
-          backgroundSize: "40px 40px",
-          imageRendering: "pixelated",
-        }}
-      >
-        <span className="absolute left-2 top-7 z-10 rounded bg-black/40 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-gray-300">
-          Mesas de trabalho
-        </span>
-
-        {/* decoração na parede */}
-        {[
-          { src: "plant.png", x: 5, w: 7 },
-          { src: "estante.png", x: 15, w: 7 },
-          { src: "quadro-branco.png", x: 26, w: 7 },
-          { src: "relogio.png", x: 36, w: 5 },
-          { src: "plant.png", x: 47, w: 7 },
-        ].map((item, i) => (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            key={`decor-trabalho-${i}`}
-            src={`/sprites/${item.src}`}
-            alt=""
-            className="absolute top-0 z-10 -translate-x-1/2"
-            style={{ left: `${item.x}%`, width: `${item.w}%`, imageRendering: "pixelated" }}
-          />
-        ))}
-
-        {/* porta e lixeira na lateral esquerda */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/sprites/porta.png"
-          alt=""
-          className="absolute left-[2%] top-[45%] z-10 w-8"
-          style={{ imageRendering: "pixelated" }}
-        />
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/sprites/lixeira.png"
-          alt=""
-          className="absolute left-[3%] top-[68%] z-10 w-5"
-          style={{ imageRendering: "pixelated" }}
-        />
-
-        {/* mesinha extra + banco no canto inferior direito */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/sprites/cabinet.png"
-          alt=""
-          className="absolute left-[48%] top-[86%] z-10 w-8 -translate-x-1/2"
-          style={{ imageRendering: "pixelated" }}
-        />
-
-        {/* cadeiras: atrás dos personagens */}
-        {DESKS.map((pos, i) => (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            key={`cadeira-${i}`}
-            src="/sprites/chair.png"
-            alt=""
-            className="absolute z-10 w-7 -translate-x-1/2"
-            style={{ left: `${pos.x}%`, top: `${pos.y - 3}%`, imageRendering: "pixelated" }}
-          />
-        ))}
-      </div>
-
-      {/* lounge (direita) */}
-      <div
-        className="absolute inset-y-0 right-0 z-0 w-[45%]"
-        style={{
-          backgroundImage: "url(/sprites/floor-lounge.png)",
-          backgroundSize: "40px 40px",
-          imageRendering: "pixelated",
-        }}
-      >
-        <span className="absolute left-2 top-7 z-10 rounded bg-black/40 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-gray-300">
-          Copa
-        </span>
-
-        {/* faixa xadrez na base, decorativa */}
+      {/* salas: piso + decoração, na ordem do layout (última desenhada por cima) */}
+      {layout.salas.map((sala) => (
         <div
-          className="absolute inset-x-0 bottom-0 z-0 h-8"
+          key={sala.id}
+          className="absolute z-0"
           style={{
-            backgroundImage: "url(/sprites/floor-checker.png)",
-            backgroundSize: "28px 28px",
+            left: `${sala.x}%`,
+            top: `${sala.y}%`,
+            width: `${sala.w}%`,
+            height: `${sala.h}%`,
+            backgroundImage: `url(/sprites/${sala.texturaPiso})`,
+            backgroundSize: backgroundSizeParaTextura(sala.texturaPiso),
             imageRendering: "pixelated",
           }}
-        />
+        >
+          {sala.nome && (
+            <span className="absolute left-2 top-1 z-10 rounded bg-black/40 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-gray-300">
+              {sala.nome}
+            </span>
+          )}
 
-        {/* decoração na parede */}
-        {[
-          { src: "plant.png", x: 8, w: 12 },
-          { src: "quadro-a.png", x: 30, w: 10 },
-          { src: "quadro-b.png", x: 50, w: 10 },
-          { src: "quadro-c.png", x: 70, w: 10 },
-          { src: "plant.png", x: 92, w: 12 },
-        ].map((item, i) => (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            key={`decor-lounge-${i}`}
-            src={`/sprites/${item.src}`}
-            alt=""
-            className="absolute top-0 z-10 -translate-x-1/2"
-            style={{ left: `${item.x}%`, width: `${item.w}%`, imageRendering: "pixelated" }}
-          />
-        ))}
+          {layout.objetos
+            .filter((objeto) => objeto.salaId === sala.id)
+            .map((objeto) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                key={objeto.id}
+                src={`/sprites/${objeto.sprite}`}
+                alt=""
+                className="absolute z-10"
+                style={{
+                  left: `${objeto.x}%`,
+                  top: objeto.camada === "parede" ? 0 : `${objeto.y}%`,
+                  width: `${objeto.w}%`,
+                  transform: `translateX(-50%) rotate(${objeto.rotacao ?? 0}deg)`,
+                  imageRendering: "pixelated",
+                }}
+              />
+            ))}
+        </div>
+      ))}
 
-        {/* pit de sofás ao redor da mesinha de centro */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
+      {/* cadeiras: atrás dos personagens */}
+      {layout.mesas.map((mesa) => (
+        // eslint-disable-next-line @next/next/no-img-element
         <img
-          src="/sprites/sofa.png"
+          key={`cadeira-${mesa.agenteId}`}
+          src="/sprites/chair.png"
           alt=""
-          className="absolute left-1/2 top-[32%] z-10 w-10 -translate-x-1/2"
-          style={{ imageRendering: "pixelated" }}
+          className="absolute z-10 w-7 -translate-x-1/2"
+          style={{ left: `${mesa.x}%`, top: `${mesa.y - 3}%`, imageRendering: "pixelated" }}
         />
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/sprites/sofa.png"
-          alt=""
-          className="absolute left-[28%] top-[46%] z-10 w-10 -translate-x-1/2 rotate-90"
-          style={{ imageRendering: "pixelated" }}
-        />
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/sprites/sofa.png"
-          alt=""
-          className="absolute left-[72%] top-[46%] z-10 w-10 -translate-x-1/2 -rotate-90"
-          style={{ imageRendering: "pixelated" }}
-        />
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/sprites/sofa.png"
-          alt=""
-          className="absolute left-1/2 top-[62%] z-10 w-10 -translate-x-1/2 rotate-180"
-          style={{ imageRendering: "pixelated" }}
-        />
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/sprites/mesa-centro.png"
-          alt=""
-          className="absolute left-1/2 top-[48%] z-10 w-7 -translate-x-1/2"
-          style={{ imageRendering: "pixelated" }}
-        />
-      </div>
+      ))}
 
       {/* personagens: entre as cadeiras (atrás) e as mesas (na frente), pra simular "sentado" */}
-      {AGENTES.map((agente) => {
+      {agentes.map((agente) => {
         const ativo = ativoPorNome.get(agente.nome);
-        const pos = POSICOES[agente.nome];
-        if (!pos) return null;
+        const mesa = mesaPorAgente.get(agente.nome);
+        if (!mesa) return null;
         const desde = ficouOciosoEm[agente.nome];
         const aindaNaMesa = !ativo && desde !== undefined && Date.now() - desde < AGUARDAR_ANTES_DE_SAIR_MS;
-        const alvo = ativo || aindaNaMesa ? pos.mesa : (passeioOcioso[agente.nome] ?? pos.copa);
+        const alvo =
+          ativo || aindaNaMesa
+            ? { x: mesa.x, y: mesa.y }
+            : (passeioOcioso[agente.nome] ?? { x: mesa.copaX, y: mesa.copaY });
 
         return (
           <PersonagemCena
             key={agente.nome}
             nome={agente.nome}
-            sprite={SPRITE_POR_AGENTE[agente.nome]}
+            sprite={spriteDoAgente(agente.nome)}
             x={alvo.x}
             y={alvo.y}
             ativo={Boolean(ativo)}
@@ -363,11 +298,11 @@ export function EscritorioAgentes({ altura = "h-[320px]" }: { altura?: string })
       })}
 
       {/* mesas com monitor: na frente dos personagens, esconde as "pernas" */}
-      {DESKS.map((pos, i) => (
+      {layout.mesas.map((mesa) => (
         <div
-          key={`mesa-${i}`}
+          key={`mesa-${mesa.agenteId}`}
           className="absolute z-20 w-12 -translate-x-1/2"
-          style={{ left: `${pos.x}%`, top: `${pos.y + 12}%` }}
+          style={{ left: `${mesa.x}%`, top: `${mesa.y + 12}%` }}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img

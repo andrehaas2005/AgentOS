@@ -81,6 +81,15 @@ function quebrarLinhas(ctx: SKRSContext2D, texto: string, larguraMax: number): s
   return linhas;
 }
 
+// DejaVu Sans (a fonte disponível no container) não tem glifos de emoji — sem isso, um
+// emoji no texto vira um retângulo vazio ("tofu") na imagem final.
+function limparEmojis(texto: string): string {
+  return texto
+    .replace(/[\u{1F1E6}-\u{1F1FF}\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{2190}-\u{21FF}\u{FE0F}\u{200D}]/gu, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
 function desenharRetanguloArredondado(ctx: SKRSContext2D, x: number, y: number, w: number, h: number, r: number) {
   ctx.beginPath();
   ctx.moveTo(x + r, y);
@@ -235,7 +244,7 @@ async function renderizarSlideCapa(
 
   ctx.font = "bold 58px 'Slide Bold'";
   const larguraTitulo = TAMANHO - pad * 2 - 80;
-  const linhasTitulo = quebrarLinhas(ctx, slide.titulo, larguraTitulo);
+  const linhasTitulo = quebrarLinhas(ctx, limparEmojis(slide.titulo), larguraTitulo);
   const alturaBanda = 40 + linhasTitulo.length * 68;
   const yBanda = pad + fotoAltura + 24;
 
@@ -267,7 +276,7 @@ async function renderizarSlideCapa(
       ctx.font = "600 26px 'Slide Bold'";
       ctx.fillStyle = "#1f2937";
       ctx.textAlign = "center";
-      const linhasBullet = quebrarLinhas(ctx, bullet.toUpperCase(), larguraItem - 20);
+      const linhasBullet = quebrarLinhas(ctx, limparEmojis(bullet).toUpperCase(), larguraItem - 20);
       let yTexto = yBullets + 70;
       for (const linha of linhasBullet.slice(0, 2)) {
         ctx.fillText(linha, cxIcone, yTexto);
@@ -319,22 +328,23 @@ async function renderizarSlidePasso(
   let y = 170;
 
   if (slide.badge) {
+    const badge = limparEmojis(slide.badge);
     ctx.font = "bold 30px 'Slide Bold'";
-    const larguraBadge = ctx.measureText(slide.badge).width + 48;
+    const larguraBadge = ctx.measureText(badge).width + 48;
     ctx.fillStyle = cor;
     desenharRetanguloArredondado(ctx, margemEsq, y, larguraBadge, 54, 27);
     ctx.fill();
     ctx.fillStyle = "#ffffff";
     ctx.textAlign = "left";
     ctx.textBaseline = "middle";
-    ctx.fillText(slide.badge, margemEsq + 24, y + 27);
+    ctx.fillText(badge, margemEsq + 24, y + 27);
     y += 96;
   }
 
   ctx.font = "bold 62px 'Slide Bold'";
   ctx.fillStyle = cor;
   ctx.textBaseline = "alphabetic";
-  const linhasTitulo = quebrarLinhas(ctx, slide.titulo, larguraTexto);
+  const linhasTitulo = quebrarLinhas(ctx, limparEmojis(slide.titulo), larguraTexto);
   for (const linha of linhasTitulo) {
     y += 62;
     ctx.fillText(linha, margemEsq, y);
@@ -353,7 +363,7 @@ async function renderizarSlidePasso(
   if (slide.texto) {
     ctx.font = "30px 'Slide'";
     ctx.fillStyle = "#374151";
-    const linhasTexto = quebrarLinhas(ctx, slide.texto, larguraTexto);
+    const linhasTexto = quebrarLinhas(ctx, limparEmojis(slide.texto), larguraTexto);
     for (const linha of linhasTexto.slice(0, 5)) {
       ctx.fillText(linha, margemEsq, y);
       y += 42;
@@ -381,7 +391,7 @@ async function renderizarSlideFechamento(
   ctx.fillStyle = "#ffffff";
   ctx.textAlign = "center";
   ctx.textBaseline = "alphabetic";
-  const linhasTitulo = quebrarLinhas(ctx, slide.titulo, TAMANHO - 200);
+  const linhasTitulo = quebrarLinhas(ctx, limparEmojis(slide.titulo), TAMANHO - 200);
   let y = 470;
   for (const linha of linhasTitulo) {
     ctx.fillText(linha, TAMANHO / 2, y);

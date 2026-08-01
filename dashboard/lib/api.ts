@@ -47,7 +47,7 @@ export type CalendarioItem = {
   status: string;
   aprovacaoAutomatica: boolean;
   redesAlvo: string[];
-  empresa: { nome: string; logoUrl: string | null };
+  empresa: { nome: string; logoUrl: string | null; contasSociais: { rede: string; status: string }[] };
   conteudos?: {
     id: string;
     texto: string | null;

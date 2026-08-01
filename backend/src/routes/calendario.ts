@@ -38,7 +38,9 @@ calendarioRouter.get("/", async (req, res) => {
       status: status ? (String(status) as StatusCalendario) : undefined,
     },
     include: {
-      empresa: true,
+      // select (não include) por segurança: contasSociais.credenciais tem tokens de acesso
+      // em texto puro — essa rota nunca deve devolver isso, só rede/status pro seletor de UI.
+      empresa: { include: { contasSociais: { select: { rede: true, status: true } } } },
       conteudos: { include: { publicacoes: true }, orderBy: { createdAt: "desc" }, take: 1 },
     },
     orderBy: { dataHora: "asc" },

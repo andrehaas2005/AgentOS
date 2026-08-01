@@ -32,8 +32,22 @@ export function EditarPostagemModal({ item, onClose }: { item: CalendarioItem; o
   const [data, setData] = useState(iniciais.data);
   const [horario, setHorario] = useState(iniciais.horario);
   const [aprovacaoAutomatica, setAprovacaoAutomatica] = useState(item.aprovacaoAutomatica);
+  const [redesAlvo, setRedesAlvo] = useState<Set<string>>(new Set(item.redesAlvo));
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+
+  const redesConectadas = item.empresa.contasSociais.filter(
+    (c) => c.status === "conectado" && (c.rede === "instagram" || c.rede === "linkedin"),
+  );
+
+  function alternarRede(rede: string) {
+    setRedesAlvo((prev) => {
+      const proximo = new Set(prev);
+      if (proximo.has(rede)) proximo.delete(rede);
+      else proximo.add(rede);
+      return proximo;
+    });
+  }
 
   async function salvar() {
     setSalvando(true);
@@ -44,6 +58,7 @@ export function EditarPostagemModal({ item, onClose }: { item: CalendarioItem; o
       tipoPost,
       briefing: briefing.trim() || undefined,
       aprovacaoAutomatica,
+      redesAlvo: Array.from(redesAlvo),
     });
     setSalvando(false);
     if (!resultado.ok) {
@@ -83,6 +98,35 @@ export function EditarPostagemModal({ item, onClose }: { item: CalendarioItem; o
               ))}
             </select>
           </label>
+
+          {redesConectadas.length > 1 && (
+            <label className="flex flex-col gap-1 text-xs text-gray-400">
+              Rede de publicação
+              <div className="flex flex-wrap gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setRedesAlvo(new Set())}
+                  className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                    redesAlvo.size === 0 ? "bg-blue-600 text-white" : "bg-surface text-gray-400 hover:text-white"
+                  }`}
+                >
+                  Todas
+                </button>
+                {redesConectadas.map((c) => (
+                  <button
+                    key={c.rede}
+                    type="button"
+                    onClick={() => alternarRede(c.rede)}
+                    className={`rounded-full px-2.5 py-1 text-xs font-medium capitalize ${
+                      redesAlvo.has(c.rede) ? "bg-blue-600 text-white" : "bg-surface text-gray-400 hover:text-white"
+                    }`}
+                  >
+                    {c.rede}
+                  </button>
+                ))}
+              </div>
+            </label>
+          )}
 
           <label className="flex flex-col gap-1 text-xs text-gray-400">
             Assunto / briefing

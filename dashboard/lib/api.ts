@@ -52,7 +52,7 @@ export type CalendarioItem = {
     id: string;
     texto: string | null;
     metadata?: ConteudoMetadata | null;
-    publicacoes: { rede: string; status: string; externalPostId: string | null; log: string | null }[];
+    publicacoes: { rede: string; status: string; externalPostId: string | null; log: string | null; link: string | null }[];
   }[];
 };
 

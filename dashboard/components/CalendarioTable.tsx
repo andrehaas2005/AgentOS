@@ -66,8 +66,11 @@ export function CalendarioTable({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [highlightId]);
 
-  async function excluir(item: CalendarioItem) {
-    if (!window.confirm("Excluir esta postagem agendada? Essa ação não pode ser desfeita.")) return;
+  async function excluir(item: CalendarioItem, publicacaoOk?: { rede: string; link: string | null }) {
+    const aviso = publicacaoOk
+      ? `Este agendamento já foi publicado de verdade em ${publicacaoOk.rede}${publicacaoOk.link ? ` (${publicacaoOk.link})` : ""}. Excluir vai apagar esse registro de publicação também — essa ação não pode ser desfeita. Continuar?`
+      : "Excluir esta postagem agendada? Essa ação não pode ser desfeita.";
+    if (!window.confirm(aviso)) return;
     setExcluindoId(item.id);
     const resultado = await excluirCalendarioItem(item.id);
     setExcluindoId(null);
@@ -101,11 +104,15 @@ export function CalendarioTable({
             // bruto direto, sem sobrepor com base numa publicação parcial.
             const estilo = STATUS_ESTILO[item.status] ?? STATUS_ESTILO.planejado;
             const assunto = item.briefing?.trim() || conteudo?.texto?.slice(0, 80) || "—";
+            // Erro sempre pode ser excluído (mesmo com sucesso parcial numa rede — o aviso
+            // de confirmação deixa isso claro antes de apagar). Fora isso, só libera excluir
+            // itens sem nenhuma publicação real ainda, pra não perder histórico de post feito.
             const podeExcluir =
-              !publicacaoOk &&
-              item.status !== "aprovado" &&
-              item.status !== "publicando" &&
-              item.status !== "publicado";
+              item.status === "erro" ||
+              (!publicacaoOk &&
+                item.status !== "aprovado" &&
+                item.status !== "publicando" &&
+                item.status !== "publicado");
 
             return (
               <tr
@@ -152,7 +159,7 @@ export function CalendarioTable({
                   {podeExcluir && (
                     <button
                       type="button"
-                      onClick={() => excluir(item)}
+                      onClick={() => excluir(item, publicacaoOk)}
                       disabled={excluindoId === item.id}
                       className="rounded-lg px-2 py-1 text-xs text-gray-400 hover:bg-panel hover:text-red-400 disabled:opacity-50"
                     >

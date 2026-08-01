@@ -71,6 +71,7 @@ export type ConteudoMetadata = {
   cta?: string;
   promptImagem?: string;
   roteiroVideo?: string;
+  notasAgentesCustomizados?: { agente: string; nota: string }[];
 };
 
 export type Conteudo = {
@@ -150,6 +151,16 @@ export type AgenteDefinicao = {
   nome: string;
   descricao: string;
   prompt: string | null;
+};
+
+export type AgenteCustomizado = {
+  id: string;
+  nome: string;
+  descricao: string;
+  prompt: string;
+  ativo: boolean;
+  origem: string;
+  createdAt: string;
 };
 
 export type DashboardStats = {
@@ -365,6 +376,46 @@ export function getAgentesStats(empresaId?: string) {
 
 export function getAgentesDefinicoes() {
   return safeFetch<AgenteDefinicao[]>("/api/agentes/definicoes", []);
+}
+
+export function getAgentesCustomizados() {
+  return safeFetch<AgenteCustomizado[]>("/api/agentes-customizados", []);
+}
+
+export async function criarAgenteCustomizado(dados: {
+  nome: string;
+  descricao: string;
+  prompt: string;
+}): Promise<{ ok: boolean; erro?: string }> {
+  const resultado = await postJson("/api/agentes-customizados", dados);
+  return { ok: resultado.ok, erro: resultado.erro };
+}
+
+export async function atualizarAgenteCustomizado(
+  id: string,
+  dados: Partial<{ nome: string; descricao: string; prompt: string; ativo: boolean }>,
+): Promise<{ ok: boolean; erro?: string }> {
+  const resultado = await patchJson(`/api/agentes-customizados/${id}`, dados);
+  return { ok: resultado.ok, erro: resultado.erro };
+}
+
+export async function excluirAgenteCustomizado(id: string): Promise<{ ok: boolean; erro?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/api/agentes-customizados/${id}`, { method: "DELETE" });
+    if (!res.ok) return { ok: false, erro: "Não foi possível excluir." };
+    return { ok: true };
+  } catch {
+    return { ok: false, erro: "Falha de conexão com o backend." };
+  }
+}
+
+export async function gerarRascunhoAgente(
+  pedido: string,
+): Promise<{ ok: boolean; erro?: string; nome?: string; descricao?: string; prompt?: string }> {
+  const resultado = await postJson("/api/agentes-customizados/gerar", { pedido });
+  if (!resultado.ok) return { ok: false, erro: resultado.erro };
+  const dados = resultado.dados as { nome: string; descricao: string; prompt: string };
+  return { ok: true, ...dados };
 }
 
 export function getAgenteTimeline(nome: string) {

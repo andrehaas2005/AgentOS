@@ -105,6 +105,16 @@ export function ConteudoPreviewCard({ conteudo }: { conteudo: Conteudo }) {
           </p>
         )}
 
+        {conteudo.metadata?.notasAgentesCustomizados && conteudo.metadata.notasAgentesCustomizados.length > 0 && (
+          <div className="flex flex-col gap-1.5 rounded-lg bg-surface p-2">
+            {conteudo.metadata.notasAgentesCustomizados.map((n, i) => (
+              <p key={i} className="text-[11px] text-gray-400">
+                <span className="font-medium text-gray-300">{n.agente}:</span> {n.nota}
+              </p>
+            ))}
+          </div>
+        )}
+
         <div className="mt-1 flex items-center justify-between border-t border-border pt-2 text-[11px] text-gray-500">
           <span>v{conteudo.versao}</span>
           <span>{STATUS_LABEL[conteudo.calendario.status] ?? conteudo.calendario.status}</span>

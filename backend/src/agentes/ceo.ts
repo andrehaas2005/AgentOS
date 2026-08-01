@@ -31,6 +31,7 @@ type ConteudoEstruturado = {
   roteiroVideo?: string;
   aprovado: boolean;
   observacoesRevisor: string;
+  notasAgentesCustomizados?: { agente: string; nota: string }[];
 };
 
 async function rodarEtapa<T>(
@@ -214,6 +215,31 @@ export async function executarAgenteCeo(calendarioItemId: string) {
       aprovado: revisao.aprovado,
       observacoesRevisor: revisao.observacoes,
     };
+
+    // Agentes customizados (criados manualmente ou pelo CEO) rodam depois do time fixo,
+    // recebendo o conteúdo final já pronto — contribuem com uma nota própria conforme a
+    // função deles, sem alterar legenda/hashtags/cta que já passaram pelo Revisor de Marca.
+    const agentesCustomizados = await prisma.agenteCustomizado.findMany({
+      where: { ativo: true },
+      orderBy: { createdAt: "asc" },
+    });
+    if (agentesCustomizados.length > 0) {
+      const notas: { agente: string; nota: string }[] = [];
+      for (const agenteCustom of agentesCustomizados) {
+        try {
+          const nota = await rodarEtapa(agenteCustom.nome, item.empresaId, `Executando ${agenteCustom.nome}`, () =>
+            gerarTexto(
+              agenteCustom.prompt,
+              `${contexto}\n\nConteúdo final produzido pelo time:\nLegenda: ${estruturado.legenda}\nHashtags: ${estruturado.hashtags.join(" ")}\nCTA: ${estruturado.cta}\n${promptImagem ? `Prompt de imagem: ${promptImagem}\n` : ""}${roteiroVideo ? `Roteiro de vídeo: ${roteiroVideo}\n` : ""}\nDê sua contribuição conforme a sua função.`,
+            ),
+          );
+          notas.push({ agente: agenteCustom.nome, nota });
+        } catch (erro) {
+          console.error(`Agente customizado ${agenteCustom.nome} falhou:`, erro);
+        }
+      }
+      if (notas.length > 0) estruturado.notasAgentesCustomizados = notas;
+    }
 
     await prisma.execucaoAgente.create({
       data: {

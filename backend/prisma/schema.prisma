@@ -122,6 +122,18 @@ model FraseOciosa {
   @@map("frases_ociosas")
 }
 
+model AgenteCustomizado {
+  id        String   @id @default(uuid())
+  nome      String
+  descricao String
+  prompt    String
+  ativo     Boolean  @default(true)
+  origem    String   @default("manual") // "manual" | "ceo"
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("agentes_customizados")
+}
+
 model ExecucaoAgente {
   id          String   @id @default(uuid())
   agente      String

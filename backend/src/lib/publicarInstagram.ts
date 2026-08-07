@@ -3,12 +3,14 @@ import {
   criarContainerImagem,
   criarContainerImagemCarrossel,
   criarContainerCarrossel,
+  criarContainerVideo,
   consultarStatusContainer,
   publicarContainer,
   obterPermalink,
   MetaGraphError,
 } from "./metaGraph";
 import { comDisclosureAutomatico } from "./disclosure";
+import { ehVideo } from "./midiaConteudo";
 
 const PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL ?? "http://localhost:4000";
 
@@ -22,9 +24,16 @@ export class PublicacaoInstagramError extends Error {
   }
 }
 
-async function aguardarContainerPronto(containerId: string, accessToken: string): Promise<void> {
-  const TENTATIVAS = 5;
-  const INTERVALO_MS = 2000;
+// Vídeo demora bem mais que imagem pro Instagram processar (transcodificação) — passa
+// fácil de 1 minuto pra vídeos curtos. Imagem processa quase na hora, mantém o timeout
+// curto original.
+async function aguardarContainerPronto(
+  containerId: string,
+  accessToken: string,
+  opcoes?: { tentativas?: number; intervaloMs?: number },
+): Promise<void> {
+  const TENTATIVAS = opcoes?.tentativas ?? 5;
+  const INTERVALO_MS = opcoes?.intervaloMs ?? 2000;
 
   for (let tentativa = 0; tentativa < TENTATIVAS; tentativa++) {
     const status = await consultarStatusContainer(containerId, accessToken);
@@ -62,13 +71,21 @@ export async function publicarConteudoNoInstagram(conteudoId: string) {
 
   const igUserId = credenciais.ig_user_id;
   const accessToken = credenciais.access_token;
-  const ehCarrossel = conteudo.calendario.tipoPost === "carrossel" && conteudo.midiaUrls.length > 1;
+  const ehVideoUnico = conteudo.midiaUrls.length === 1 && ehVideo(conteudo.midiaUrls[0]);
+  const ehCarrossel = !ehVideoUnico && conteudo.calendario.tipoPost === "carrossel" && conteudo.midiaUrls.length > 1;
+
+  // Vídeo demora bem mais que imagem pra transcodificar — dá até 3 minutos (60 tentativas
+  // de 3s) antes de desistir, em vez dos ~10s usados pra imagem/carrossel.
+  const TENTATIVAS_VIDEO = { tentativas: 60, intervaloMs: 3000 };
 
   try {
     const legenda = conteudo.texto ? comDisclosureAutomatico(conteudo.texto) : undefined;
 
     let containerId: string;
-    if (ehCarrossel) {
+    if (ehVideoUnico) {
+      const videoUrl = `${PUBLIC_BASE_URL}${conteudo.midiaUrls[0]}`;
+      containerId = await criarContainerVideo(igUserId, accessToken, videoUrl, legenda);
+    } else if (ehCarrossel) {
       const childrenIds: string[] = [];
       for (const midiaUrl of conteudo.midiaUrls) {
         const imageUrl = `${PUBLIC_BASE_URL}${midiaUrl}`;
@@ -82,7 +99,7 @@ export async function publicarConteudoNoInstagram(conteudoId: string) {
       containerId = await criarContainerImagem(igUserId, accessToken, imageUrl, legenda);
     }
 
-    await aguardarContainerPronto(containerId, accessToken);
+    await aguardarContainerPronto(containerId, accessToken, ehVideoUnico ? TENTATIVAS_VIDEO : undefined);
     const externalPostId = await publicarContainer(igUserId, accessToken, containerId);
     const link = await obterPermalink(externalPostId, accessToken);
 

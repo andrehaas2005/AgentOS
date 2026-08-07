@@ -15,6 +15,7 @@ import {
   regenerarMidiaConteudo,
   gerarVideoInicialConteudo,
   RegeneracaoIndisponivelError,
+  ehVideo,
 } from "../lib/midiaConteudo";
 import { dispararRevisao } from "../lib/revisao";
 import { replicarConteudo } from "../lib/replicarConteudo";
@@ -148,10 +149,6 @@ conteudosRouter.delete("/:id/midia", async (req, res) => {
   res.json(atualizado);
 });
 
-function ehVideoUrl(url: string): boolean {
-  return /\.(mp4|mov|webm)$/i.test(url);
-}
-
 conteudosRouter.post("/:id/midia/regenerar", async (req, res) => {
   const { indice } = req.body as { indice?: unknown };
   if (typeof indice !== "number" || indice < 0) return res.status(400).json({ error: "Índice de mídia inválido." });
@@ -166,7 +163,7 @@ conteudosRouter.post("/:id/midia/regenerar", async (req, res) => {
   // isso, pra vídeo, dispara sem esperar (fire-and-forget) e devolve 202 na hora — o
   // frontend faz polling em GET /:id até midiaUrls mudar. Imagem continua síncrona (rápida,
   // nunca bateu nesse timeout).
-  if (ehVideoUrl(conteudo.midiaUrls[indice])) {
+  if (ehVideo(conteudo.midiaUrls[indice])) {
     regenerarMidiaConteudo(req.params.id, indice).catch((erro) => {
       console.error(`Regeneração de vídeo falhou (conteudo ${req.params.id}):`, erro);
     });

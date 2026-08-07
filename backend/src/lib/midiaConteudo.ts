@@ -17,7 +17,7 @@ export function removerArquivoMidiaDoDisco(urlRelativa: string): void {
   fs.unlink(path.join(PASTA_MIDIA, nomeArquivo), () => {});
 }
 
-function ehVideo(urlRelativa: string): boolean {
+export function ehVideo(urlRelativa: string): boolean {
   return /\.(mp4|mov|webm)$/i.test(urlRelativa);
 }
 

@@ -155,6 +155,31 @@ export async function criarContainerImagem(
   return resposta.id;
 }
 
+// Vídeo (video_curto/reels) — desde 2024 a Graph API não aceita mais media_type "VIDEO"
+// pra feed; todo vídeo publicado no Instagram (mesmo os curtos que não são "Reels" no
+// sentido de conteúdo) precisa ir como media_type "REELS". share_to_feed=true faz ele
+// aparecer tanto na aba Reels quanto no feed/grade normal do perfil.
+export async function criarContainerVideo(
+  igUserId: string,
+  accessToken: string,
+  videoUrl: string,
+  legenda?: string,
+): Promise<string> {
+  const params = new URLSearchParams({
+    media_type: "REELS",
+    video_url: videoUrl,
+    share_to_feed: "true",
+    access_token: accessToken,
+  });
+  if (legenda) params.set("caption", legenda);
+
+  const resposta = await chamarGraph<{ id: string }>(`${GRAPH_URL}/${igUserId}/media`, {
+    method: "POST",
+    body: params,
+  });
+  return resposta.id;
+}
+
 // Container filho de um carrossel — mesma chamada de criarContainerImagem, mas sem
 // caption (a legenda vai só no container pai) e com is_carousel_item=true.
 export async function criarContainerImagemCarrossel(

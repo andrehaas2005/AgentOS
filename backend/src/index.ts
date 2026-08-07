@@ -14,6 +14,7 @@ import { oauthLinkedinRouter } from "./routes/oauthLinkedin";
 import { frasesRouter } from "./routes/frases";
 import { agentesCustomizadosRouter } from "./routes/agentesCustomizados";
 import { escritorioRouter } from "./routes/escritorio";
+import { configuracaoRouter } from "./routes/configuracao";
 import { iniciarRenovacaoAutomaticaDeTokens } from "./lib/renovarTokens";
 import { iniciarAgendadorExecucao } from "./lib/agendadorExecucao";
 import { tokenSessaoValido, lerCookie, NOME_COOKIE_SESSAO } from "./lib/sessao";
@@ -49,6 +50,7 @@ app.use("/api/oauth/linkedin", oauthLinkedinRouter);
 app.use("/api/frases", frasesRouter);
 app.use("/api/agentes-customizados", agentesCustomizadosRouter);
 app.use("/api/escritorio", escritorioRouter);
+app.use("/api/configuracao", configuracaoRouter);
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 4000;
 app.listen(PORT, () => {

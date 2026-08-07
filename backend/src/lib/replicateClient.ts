@@ -1,6 +1,8 @@
+import { prisma } from "../db";
+import { CONFIGURACAO_VIDEO_PADRAO } from "./catalogoModelosVideo";
+
 const REPLICATE_API_TOKEN = process.env.REPLICATE_API_TOKEN;
 const MODELO_IMAGEM = process.env.REPLICATE_MODELO ?? "black-forest-labs/flux-schnell";
-const MODELO_VIDEO = process.env.REPLICATE_MODELO_VIDEO ?? "pixverse/pixverse-v5.6";
 
 export class ReplicateError extends Error {}
 
@@ -76,19 +78,31 @@ export async function gerarImagemReplicate(prompt: string): Promise<Buffer> {
 const DIRETIVA_AUDIO_PT_BR =
   "IMPORTANT: all spoken dialogue, narration and any spoken audio in this video must be in Brazilian Portuguese (pt-BR), never in English or any other language.";
 
-// Pixverse v5.6 (texto-pra-vídeo, com áudio nativo: trilha, efeitos e falas — sem precisar de
-// um provedor de TTS separado). Configuração fixada na opção mais econômica com boa
-// qualidade: 540p custa o mesmo que 360p ($0,07/s), então não faz sentido usar 360p. Duração
-// no teto de 10s (máximo do modelo) e formato vertical 9:16 (Reels/Stories).
+// Alguns campos do catálogo (ex.: fps) usam <select> no front pra restringir as opções, mas
+// o valor de verdade que a API do Replicate espera é numérico — string vinda do banco que
+// "parece número" (ex.: "24") é convertida; strings de verdade (ex.: "9:16", "540p") ficam
+// intactas.
+function coagirNumeros(parametros: Record<string, unknown>): Record<string, unknown> {
+  const resultado: Record<string, unknown> = {};
+  for (const [chave, valor] of Object.entries(parametros)) {
+    resultado[chave] = typeof valor === "string" && valor.trim() !== "" && !Number.isNaN(Number(valor)) ? Number(valor) : valor;
+  }
+  return resultado;
+}
+
+// Modelo e parâmetros de vídeo são configuráveis pela tela de Configurações (singleton
+// ConfiguracaoVideo no banco) — trocar de provedor/modelo não exige redeploy, só um PUT
+// nessa linha. Sem configuração salva ainda, cai no default do catálogo (Pruna p-video).
 export async function gerarVideoReplicate(prompt: string): Promise<Buffer> {
+  const configuracao = await prisma.configuracaoVideo.findUnique({ where: { id: "singleton" } });
+  const modelo = configuracao?.modelo ?? CONFIGURACAO_VIDEO_PADRAO.modelo;
+  const parametros = (configuracao?.parametros as Record<string, unknown> | null) ?? CONFIGURACAO_VIDEO_PADRAO.parametros;
+
   return rodarPredicaoReplicate(
-    MODELO_VIDEO,
+    modelo,
     {
+      ...coagirNumeros(parametros),
       prompt: `${prompt}\n\n${DIRETIVA_AUDIO_PT_BR}`,
-      quality: "540p",
-      duration: 10,
-      aspect_ratio: "9:16",
-      generate_audio_switch: true,
     },
     // Vídeo demora bem mais que imagem pra gerar — até ~8 min de espera (120 x 4s).
     { tentativas: 120, intervaloMs: 4000, rotuloErro: "o vídeo" },

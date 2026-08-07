@@ -157,6 +157,19 @@ model LayoutEscritorio {
   @@map("layout_escritorio")
 }
 
+// Singleton — mesmo padrão do LayoutEscritorio. Guarda qual modelo do Replicate a geração
+// de vídeo usa e os parâmetros extras enviados no input (tudo exceto "prompt", que é sempre
+// montado em código). Trocar de modelo (ex.: Pixverse -> Pruna p-video) vira só um PUT nessa
+// linha, sem precisar redeploy — a tela de Configurações em /configuracoes edita isso.
+model ConfiguracaoVideo {
+  id           String   @id @default("singleton")
+  modelo       String
+  parametros   Json
+  atualizadoEm DateTime @updatedAt @map("atualizado_em")
+
+  @@map("configuracao_video")
+}
+
 model ExecucaoAgente {
   id          String   @id @default(uuid())
   agente      String

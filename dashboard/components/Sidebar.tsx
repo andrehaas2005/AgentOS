@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Bot, Building2, CalendarDays, FileText, LayoutDashboard, LogOut, Send } from "lucide-react";
+import { Bot, Building2, CalendarDays, FileText, LayoutDashboard, LogOut, Send, Settings } from "lucide-react";
 
 const NAV_ITEMS = [
   { href: "/", label: "Visão Geral", icon: LayoutDashboard },
@@ -11,6 +11,7 @@ const NAV_ITEMS = [
   { href: "/conteudos", label: "Conteúdos", icon: FileText },
   { href: "/publicacoes", label: "Publicações", icon: Send },
   { href: "/agentes", label: "Agentes", icon: Bot },
+  { href: "/configuracoes", label: "Configurações", icon: Settings },
 ];
 
 const CLASSE_DESKTOP = "hidden w-56 shrink-0 flex-col gap-1 border-r border-border bg-panel p-3 md:flex";

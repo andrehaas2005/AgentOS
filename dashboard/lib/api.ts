@@ -773,6 +773,37 @@ export async function publicarConteudoLinkedin(id: string): Promise<{ ok: boolea
   }
 }
 
+export type CampoModeloVideo =
+  | { chave: string; label: string; tipo: "select"; opcoes: string[]; padrao: string }
+  | { chave: string; label: string; tipo: "numero"; min: number; max: number; padrao: number }
+  | { chave: string; label: string; tipo: "booleano"; padrao: boolean };
+
+export type ModeloVideo = {
+  slug: string;
+  nome: string;
+  descricao: string;
+  urlDocumentacao: string;
+  campos: CampoModeloVideo[];
+};
+
+export type ConfiguracaoVideo = {
+  modelo: string;
+  parametros: Record<string, string | number | boolean>;
+  catalogo: ModeloVideo[];
+};
+
+export function getConfiguracaoVideo() {
+  return safeFetch<ConfiguracaoVideo>("/api/configuracao/video", { modelo: "", parametros: {}, catalogo: [] });
+}
+
+export async function salvarConfiguracaoVideo(
+  modelo: string,
+  parametros: Record<string, string | number | boolean>,
+): Promise<{ ok: boolean; erro?: string }> {
+  const resultado = await putJson("/api/configuracao/video", { modelo, parametros });
+  return { ok: resultado.ok, erro: resultado.erro };
+}
+
 export function getLayoutEscritorio() {
   return safeFetch<LayoutEscritorioDados>("/api/escritorio/layout", LAYOUT_ESCRITORIO_PADRAO);
 }

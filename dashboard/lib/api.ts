@@ -202,7 +202,21 @@ export type DashboardStats = {
 
 async function safeFetch<T>(path: string, fallback: T): Promise<T> {
   try {
-    const res = await fetch(`${API_URL}${path}`, { cache: "no-store" });
+    const headers: Record<string, string> = {};
+    if (typeof window === "undefined") {
+      // Server Component: essa chamada vai direto pro backend via rede interna do Docker
+      // (INTERNAL_API_URL), sem passar pelo navegador — então o cookie de sessão não é
+      // enviado automaticamente como seria num fetch do cliente. Repassamos manualmente o
+      // cookie da requisição recebida (Next injeta via next/headers) pro backend aceitar.
+      const { cookies } = await import("next/headers");
+      const cookieStore = await cookies();
+      const cookieHeader = cookieStore
+        .getAll()
+        .map((c) => `${c.name}=${c.value}`)
+        .join("; ");
+      if (cookieHeader) headers.Cookie = cookieHeader;
+    }
+    const res = await fetch(`${API_URL}${path}`, { cache: "no-store", headers });
     if (!res.ok) return fallback;
     return (await res.json()) as T;
   } catch {

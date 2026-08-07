@@ -110,14 +110,112 @@ export async function enviarImagemLinkedin(accessToken: string, uploadUrl: strin
   }
 }
 
-// Escopo v1: posts de texto no feed pessoal, com imagem única ou múltiplas (multiImage) —
-// sem vídeo/documento. A Posts API exige o header LinkedIn-Version (formato YYYYMM) e
-// retorna o id do post criado no header x-restli-id (corpo da resposta 201 vem vazio).
+// Registra o upload de um vídeo (Video API) — diferente de imagem, exige o tamanho do
+// arquivo antecipadamente e devolve uma ou mais uploadInstructions (uma por "chunk" do
+// arquivo; vídeos curtos como os gerados aqui normalmente vêm com só uma).
+export async function inicializarUploadVideo(
+  accessToken: string,
+  authorUrn: string,
+  fileSizeBytes: number,
+): Promise<{
+  uploadInstructions: { uploadUrl: string; firstByte: number; lastByte: number }[];
+  videoUrn: string;
+  uploadToken: string;
+}> {
+  const res = await fetch(`${API_URL}/rest/videos?action=initializeUpload`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "LinkedIn-Version": API_VERSION,
+      "X-Restli-Protocol-Version": "2.0.0",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ initializeUploadRequest: { owner: authorUrn, fileSizeBytes } }),
+  });
+
+  if (!res.ok) {
+    const corpo = (await res.json().catch(() => null)) as { message?: string } | null;
+    throw new LinkedinApiError(corpo?.message ?? `LinkedIn respondeu ${res.status}`, res.status);
+  }
+
+  const corpo = (await res.json()) as {
+    value: {
+      uploadInstructions: { uploadUrl: string; firstByte: number; lastByte: number }[];
+      video: string;
+      uploadToken: string;
+    };
+  };
+  return {
+    uploadInstructions: corpo.value.uploadInstructions,
+    videoUrn: corpo.value.video,
+    uploadToken: corpo.value.uploadToken,
+  };
+}
+
+// PUT de um trecho ("chunk") do vídeo na uploadUrl correspondente — diferente de imagem,
+// NÃO leva o header Authorization (a uploadUrl já vem assinada). Devolve o ETag da
+// resposta, exigido depois no finalizeUpload pra identificar cada trecho enviado.
+export async function enviarChunkVideoLinkedin(uploadUrl: string, chunk: Buffer): Promise<string> {
+  const res = await fetch(uploadUrl, { method: "PUT", body: chunk });
+  if (!res.ok) {
+    throw new LinkedinApiError(`Falha ao enviar um trecho do vídeo para o LinkedIn (status ${res.status}).`, res.status);
+  }
+  const etag = res.headers.get("etag") ?? res.headers.get("ETag");
+  if (!etag) throw new LinkedinApiError("O LinkedIn não retornou o ETag do trecho de vídeo enviado.");
+  return etag;
+}
+
+// Fecha o upload depois que todos os chunks foram enviados — só a partir daqui o LinkedIn
+// começa a processar/transcodificar o vídeo.
+export async function finalizarUploadVideo(
+  accessToken: string,
+  videoUrn: string,
+  uploadToken: string,
+  uploadedPartIds: string[],
+): Promise<void> {
+  const res = await fetch(`${API_URL}/rest/videos?action=finalizeUpload`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "LinkedIn-Version": API_VERSION,
+      "X-Restli-Protocol-Version": "2.0.0",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ finalizeUploadRequest: { video: videoUrn, uploadToken, uploadedPartIds } }),
+  });
+  if (!res.ok) {
+    const corpo = (await res.json().catch(() => null)) as { message?: string } | null;
+    throw new LinkedinApiError(corpo?.message ?? `LinkedIn respondeu ${res.status}`, res.status);
+  }
+}
+
+// Vídeo precisa terminar de processar (transcodificar) no LinkedIn antes de poder ser
+// referenciado num post — análogo ao aguardarContainerPronto do Instagram.
+export async function consultarStatusVideoLinkedin(accessToken: string, videoUrn: string): Promise<string> {
+  const res = await fetch(`${API_URL}/rest/videos/${encodeURIComponent(videoUrn)}`, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "LinkedIn-Version": API_VERSION,
+      "X-Restli-Protocol-Version": "2.0.0",
+    },
+  });
+  if (!res.ok) {
+    throw new LinkedinApiError(`LinkedIn respondeu ${res.status} ao consultar status do vídeo.`, res.status);
+  }
+  const corpo = (await res.json()) as { status?: string };
+  return corpo.status ?? "UNKNOWN";
+}
+
+// Escopo: posts de texto no feed pessoal, com imagem única, múltiplas (multiImage) ou um
+// único vídeo — mediaUrns leva a(s) URN(s) de imagem OU (nunca junto) a URN do vídeo já
+// processado; a Posts API referencia os dois tipos da mesma forma via content.media.id.
+// A Posts API exige o header LinkedIn-Version (formato YYYYMM) e retorna o id do post
+// criado no header x-restli-id (corpo da resposta 201 vem vazio).
 export async function criarPost(
   accessToken: string,
   authorUrn: string,
   texto: string,
-  imagemUrns?: string[],
+  mediaUrns?: string[],
 ): Promise<string> {
   const body: Record<string, unknown> = {
     author: authorUrn,
@@ -127,10 +225,10 @@ export async function criarPost(
     lifecycleState: "PUBLISHED",
     isReshareDisabledByAuthor: false,
   };
-  if (imagemUrns && imagemUrns.length > 1) {
-    body.content = { multiImage: { images: imagemUrns.map((id) => ({ id })) } };
-  } else if (imagemUrns && imagemUrns.length === 1) {
-    body.content = { media: { id: imagemUrns[0] } };
+  if (mediaUrns && mediaUrns.length > 1) {
+    body.content = { multiImage: { images: mediaUrns.map((id) => ({ id })) } };
+  } else if (mediaUrns && mediaUrns.length === 1) {
+    body.content = { media: { id: mediaUrns[0] } };
   }
 
   const res = await fetch(`${API_URL}/rest/posts`, {

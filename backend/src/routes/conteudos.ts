@@ -73,6 +73,18 @@ conteudosRouter.get("/", async (req, res) => {
   res.json(conteudos);
 });
 
+// Usado pelo frontend pra fazer polling depois de disparar uma geração de vídeo assíncrona
+// (ver /midia/regenerar e /midia/gerar-video abaixo) — precisa devolver versao/midiaUrls
+// atualizados sem re-buscar a lista inteira.
+conteudosRouter.get("/:id", async (req, res) => {
+  const conteudo = await prisma.conteudo.findUnique({
+    where: { id: req.params.id },
+    include: { calendario: { include: { empresa: { include: { contasSociais: true } } } }, publicacoes: true },
+  });
+  if (!conteudo) return res.status(404).json({ error: "Conteúdo não encontrado" });
+  res.json(conteudo);
+});
+
 conteudosRouter.patch("/:id", async (req, res) => {
   const { texto } = req.body as { texto?: unknown };
   if (typeof texto !== "string") return res.status(400).json({ error: "Campo 'texto' é obrigatório." });
@@ -136,13 +148,34 @@ conteudosRouter.delete("/:id/midia", async (req, res) => {
   res.json(atualizado);
 });
 
+function ehVideoUrl(url: string): boolean {
+  return /\.(mp4|mov|webm)$/i.test(url);
+}
+
 conteudosRouter.post("/:id/midia/regenerar", async (req, res) => {
   const { indice } = req.body as { indice?: unknown };
   if (typeof indice !== "number" || indice < 0) return res.status(400).json({ error: "Índice de mídia inválido." });
 
+  const conteudo = await prisma.conteudo.findUnique({ where: { id: req.params.id } });
+  if (!conteudo) return res.status(404).json({ error: "Conteúdo não encontrado." });
+  if (indice >= conteudo.midiaUrls.length) return res.status(400).json({ error: "Índice de mídia fora do intervalo." });
+
+  // Geração de vídeo passa fácil de 1-2 minutos (Pixverse) — bem acima do timeout do
+  // proxy/Cloudflare na frente do backend, que mata a conexão antes de terminar (o cliente
+  // via um 502 mesmo com o backend ainda processando com sucesso em segundo plano). Por
+  // isso, pra vídeo, dispara sem esperar (fire-and-forget) e devolve 202 na hora — o
+  // frontend faz polling em GET /:id até midiaUrls mudar. Imagem continua síncrona (rápida,
+  // nunca bateu nesse timeout).
+  if (ehVideoUrl(conteudo.midiaUrls[indice])) {
+    regenerarMidiaConteudo(req.params.id, indice).catch((erro) => {
+      console.error(`Regeneração de vídeo falhou (conteudo ${req.params.id}):`, erro);
+    });
+    return res.status(202).json({ processando: true });
+  }
+
   try {
-    const conteudo = await regenerarMidiaConteudo(req.params.id, indice);
-    res.json(conteudo);
+    const atualizado = await regenerarMidiaConteudo(req.params.id, indice);
+    res.json(atualizado);
   } catch (erro) {
     res.status(erro instanceof RegeneracaoIndisponivelError ? 502 : 400).json({
       error: erro instanceof Error ? erro.message : "Erro inesperado ao gerar a mídia.",
@@ -151,14 +184,22 @@ conteudosRouter.post("/:id/midia/regenerar", async (req, res) => {
 });
 
 conteudosRouter.post("/:id/midia/gerar-video", async (req, res) => {
-  try {
-    const conteudo = await gerarVideoInicialConteudo(req.params.id);
-    res.json(conteudo);
-  } catch (erro) {
-    res.status(erro instanceof RegeneracaoIndisponivelError ? 502 : 400).json({
-      error: erro instanceof Error ? erro.message : "Erro inesperado ao gerar o vídeo.",
-    });
+  const conteudo = await prisma.conteudo.findUnique({ where: { id: req.params.id } });
+  if (!conteudo) return res.status(404).json({ error: "Conteúdo não encontrado." });
+  if (conteudo.midiaUrls.length > 0) {
+    return res.status(400).json({ error: 'Este conteúdo já tem mídia — use "gerar novamente" em vez de gerar inicial.' });
   }
+  const metadata = conteudo.metadata as { roteiroVideo?: string; promptVideo?: string } | null;
+  if (!metadata?.roteiroVideo && !metadata?.promptVideo) {
+    return res.status(400).json({ error: "Nenhum roteiro de vídeo salvo para este conteúdo." });
+  }
+
+  // Mesmo motivo do /midia/regenerar acima: geração de vídeo é lenta demais pro proxy
+  // aguentar de forma síncrona.
+  gerarVideoInicialConteudo(req.params.id).catch((erro) => {
+    console.error(`Geração inicial de vídeo falhou (conteudo ${req.params.id}):`, erro);
+  });
+  res.status(202).json({ processando: true });
 });
 
 const mensagemChatInput = z.object({

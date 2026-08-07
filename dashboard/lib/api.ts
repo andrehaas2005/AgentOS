@@ -622,7 +622,13 @@ export async function removerMidiaConteudo(id: string, url: string): Promise<{ o
   }
 }
 
-export async function regenerarMidiaConteudo(id: string, indice: number): Promise<{ ok: boolean; erro?: string }> {
+// Geração de vídeo (regenerar ou gerar-video) roda em segundo plano no backend — ver
+// comentário nas rotas. "processando: true" significa que o backend aceitou o pedido e
+// devolveu na hora, sem esperar terminar; use aguardarConteudoAtualizado pra saber quando
+// a mídia nova realmente chegou.
+type RespostaMidia = { ok: boolean; erro?: string; processando?: boolean };
+
+export async function regenerarMidiaConteudo(id: string, indice: number): Promise<RespostaMidia> {
   try {
     const res = await fetch(`${API_URL}/api/conteudos/${id}/midia/regenerar`, {
       method: "POST",
@@ -631,7 +637,7 @@ export async function regenerarMidiaConteudo(id: string, indice: number): Promis
     });
     const corpo = await res.json().catch(() => null);
     if (!res.ok) return { ok: false, erro: corpo?.error ?? "Não foi possível gerar a mídia novamente." };
-    return { ok: true };
+    return { ok: true, processando: corpo?.processando === true };
   } catch {
     return { ok: false, erro: "Falha de conexão com o backend." };
   }
@@ -639,15 +645,43 @@ export async function regenerarMidiaConteudo(id: string, indice: number): Promis
 
 // Pra conteúdo de vídeo criado antes da geração automática existir (midiaUrls vazio, só
 // roteiro salvo) — gera o vídeo pela primeira vez a partir do roteiro/prompt já existente.
-export async function gerarVideoInicialConteudo(id: string): Promise<{ ok: boolean; erro?: string }> {
+export async function gerarVideoInicialConteudo(id: string): Promise<RespostaMidia> {
   try {
     const res = await fetch(`${API_URL}/api/conteudos/${id}/midia/gerar-video`, { method: "POST" });
     const corpo = await res.json().catch(() => null);
     if (!res.ok) return { ok: false, erro: corpo?.error ?? "Não foi possível gerar o vídeo." };
-    return { ok: true };
+    return { ok: true, processando: corpo?.processando === true };
   } catch {
     return { ok: false, erro: "Falha de conexão com o backend." };
   }
+}
+
+export async function getConteudo(id: string): Promise<Conteudo | null> {
+  try {
+    const res = await fetch(`${API_URL}/api/conteudos/${id}`);
+    if (!res.ok) return null;
+    return (await res.json()) as Conteudo;
+  } catch {
+    return null;
+  }
+}
+
+// Faz polling de um conteúdo até `condicaoAtendida` ser verdadeira (ex: uma mídia nova
+// aparecer) ou o tempo esgotar. Usado depois de disparar geração de vídeo assíncrona.
+export async function aguardarConteudo(
+  id: string,
+  condicaoAtendida: (conteudo: Conteudo) => boolean,
+  opcoes: { intervaloMs?: number; timeoutMs?: number } = {},
+): Promise<boolean> {
+  const intervaloMs = opcoes.intervaloMs ?? 6000;
+  const timeoutMs = opcoes.timeoutMs ?? 6 * 60 * 1000;
+  const inicio = Date.now();
+  while (Date.now() - inicio < timeoutMs) {
+    await new Promise((resolve) => setTimeout(resolve, intervaloMs));
+    const conteudo = await getConteudo(id);
+    if (conteudo && condicaoAtendida(conteudo)) return true;
+  }
+  return false;
 }
 
 export async function dispararRevisao(

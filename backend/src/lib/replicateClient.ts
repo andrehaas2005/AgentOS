@@ -70,6 +70,12 @@ export async function gerarImagemReplicate(prompt: string): Promise<Buffer> {
   );
 }
 
+// Diretiva fixa, sempre anexada ao prompt de verdade enviado ao Pixverse — reforço em
+// código (não só nas instruções do Diretor de Vídeo) pra garantir que o áudio nativo
+// (fala/narração) do vídeo sempre saia em português do Brasil, mesmo se o LLM esquecer.
+const DIRETIVA_AUDIO_PT_BR =
+  "IMPORTANT: all spoken dialogue, narration and any spoken audio in this video must be in Brazilian Portuguese (pt-BR), never in English or any other language.";
+
 // Pixverse v5.6 (texto-pra-vídeo, com áudio nativo: trilha, efeitos e falas — sem precisar de
 // um provedor de TTS separado). Configuração fixada na opção mais econômica com boa
 // qualidade: 540p custa o mesmo que 360p ($0,07/s), então não faz sentido usar 360p. Duração
@@ -78,7 +84,7 @@ export async function gerarVideoReplicate(prompt: string): Promise<Buffer> {
   return rodarPredicaoReplicate(
     MODELO_VIDEO,
     {
-      prompt,
+      prompt: `${prompt}\n\n${DIRETIVA_AUDIO_PT_BR}`,
       quality: "540p",
       duration: 10,
       aspect_ratio: "9:16",

@@ -75,7 +75,7 @@ Dado o ângulo do post, a legenda e as guidelines de marca da empresa, produza D
 1. "roteiro": um roteiro curto em português (cenas, falas/legendas na tela) — serve como registro legível pra revisão humana.
 2. "promptVideo": a descrição em INGLÊS que será enviada direto pro gerador de vídeo (Pixverse). Regras importantes pro promptVideo:
    - Descreva 1 a 3 cortes/cenas ("shots") com linguagem de câmera cinematográfica (close-up, wide shot, push-in, cut to next shot), no estilo: "Shot 1: ... Cut to the next scene, Shot 2: ...".
-   - Se houver fala/narração, escreva-a entre aspas dentro da descrição da cena (ex: She says, "..."), sempre em português quando a marca fala com o público brasileiro.
+   - Se houver fala/narração, escreva-a entre aspas dentro da descrição da cena (ex: She says, "..."). REGRA FIXA, sem exceção: todo áudio falado (falas, narração) deve estar em PORTUGUÊS DO BRASIL — mesmo o resto do prompt sendo em inglês, as palavras entre aspas que o modelo vai pronunciar têm que ser em português.
    - Descreva também o áudio esperado (música de fundo, efeitos sonoros) em uma frase ao final — o modelo gera áudio nativamente.
    - Tudo isso precisa caber em NO MÁXIMO 10 segundos de vídeo — seja econômico, escolha o gancho mais forte do roteiro, não tente encaixar o roteiro inteiro.
    - Não inclua textos on-screen/legendas gráficas no prompt (o modelo não renderiza texto sobreposto de forma confiável) — só ação, câmera e fala.

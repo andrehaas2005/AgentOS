@@ -3,11 +3,12 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Clapperboard } from "lucide-react";
-import { gerarVideoInicialConteudo } from "@/lib/api";
+import { gerarVideoInicialConteudo, aguardarConteudo } from "@/lib/api";
 
 // Aparece só quando o conteúdo é do tipo vídeo e ainda não tem mídia (só o roteiro do
 // Diretor de Vídeo salvo) — gera o vídeo de verdade via Pixverse a partir desse roteiro.
-// Pode demorar alguns minutos (geração de vídeo é bem mais lenta que imagem).
+// A geração roda em segundo plano no backend (é lenta demais pro proxy aguentar de forma
+// síncrona), então aqui a gente dispara e fica de olho (polling) até a mídia aparecer.
 export function GerarVideoBotao({ conteudoId }: { conteudoId: string }) {
   const router = useRouter();
   const [gerando, setGerando] = useState(false);
@@ -17,11 +18,22 @@ export function GerarVideoBotao({ conteudoId }: { conteudoId: string }) {
     setGerando(true);
     setErro(null);
     const resultado = await gerarVideoInicialConteudo(conteudoId);
-    setGerando(false);
     if (!resultado.ok) {
+      setGerando(false);
       setErro(resultado.erro ?? "Não foi possível gerar o vídeo.");
       return;
     }
+    if (resultado.processando) {
+      const chegou = await aguardarConteudo(conteudoId, (c) => c.midiaUrls.length > 0);
+      setGerando(false);
+      if (!chegou) {
+        setErro("A geração está demorando mais que o esperado — atualize a página em alguns minutos.");
+        return;
+      }
+      router.refresh();
+      return;
+    }
+    setGerando(false);
     router.refresh();
   }
 

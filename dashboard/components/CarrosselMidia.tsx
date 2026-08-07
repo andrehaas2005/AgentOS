@@ -8,6 +8,7 @@ import {
   removerMidiaConteudo,
   regenerarMidiaConteudo,
   recriarSlideTurno,
+  aguardarConteudo,
   type ConteudoMetadata,
   type MensagemChat,
 } from "@/lib/api";
@@ -62,12 +63,26 @@ export function CarrosselMidia({
   async function regenerar() {
     setProcessando(true);
     setErro(null);
+    const urlAntes = urlAtual;
     const resultado = await regenerarMidiaConteudo(conteudoId, indice);
-    setProcessando(false);
     if (!resultado.ok) {
+      setProcessando(false);
       setErro(resultado.erro ?? "Não foi possível gerar a mídia novamente.");
       return;
     }
+    if (resultado.processando) {
+      // Vídeo: geração roda em segundo plano no backend — fica de olho até a URL nesse
+      // índice mudar, em vez de esperar a resposta HTTP (que nunca viria a tempo).
+      const chegou = await aguardarConteudo(conteudoId, (c) => c.midiaUrls[indice] !== urlAntes);
+      setProcessando(false);
+      if (!chegou) {
+        setErro("A geração está demorando mais que o esperado — atualize a página em alguns minutos.");
+        return;
+      }
+      router.refresh();
+      return;
+    }
+    setProcessando(false);
     router.refresh();
   }
 
@@ -145,7 +160,11 @@ export function CarrosselMidia({
           )}
         </div>
       </div>
-      {processando && <p className="px-3 pt-1.5 text-[11px] text-gray-500">Processando...</p>}
+      {processando && (
+        <p className="px-3 pt-1.5 text-[11px] text-gray-500">
+          {video ? "Gerando vídeo (pode levar alguns minutos)..." : "Processando..."}
+        </p>
+      )}
       {erro && <p className="px-3 pt-1.5 text-[11px] text-red-400">{erro}</p>}
 
       {recriando && (

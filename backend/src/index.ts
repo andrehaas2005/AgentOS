@@ -16,6 +16,7 @@ import { agentesCustomizadosRouter } from "./routes/agentesCustomizados";
 import { escritorioRouter } from "./routes/escritorio";
 import { iniciarRenovacaoAutomaticaDeTokens } from "./lib/renovarTokens";
 import { iniciarAgendadorExecucao } from "./lib/agendadorExecucao";
+import { tokenSessaoValido, lerCookie, NOME_COOKIE_SESSAO } from "./lib/sessao";
 
 const app = express();
 
@@ -24,6 +25,17 @@ app.use(express.json());
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
 app.get("/health", (_req, res) => res.json({ status: "ok" }));
+
+// Login/logout acontecem no dashboard (Next.js), não aqui — este middleware só valida o
+// cookie de sessão que o dashboard emite. Substitui o Basic Auth que existia só na rota de
+// publicar; agora toda a API exige sessão válida.
+app.use("/api", (req, res, next) => {
+  const token = lerCookie(req.headers.cookie, NOME_COOKIE_SESSAO);
+  if (!tokenSessaoValido(token)) {
+    return res.status(401).json({ error: "Não autenticado." });
+  }
+  next();
+});
 
 app.use("/api/empresas", empresasRouter);
 app.use("/api/calendario", calendarioRouter);

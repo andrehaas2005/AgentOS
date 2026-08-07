@@ -15,6 +15,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     setMenuAberto(false);
   }, [pathname]);
 
+  // Tela de login não tem sidebar/menu — é a única página fora do "app" de verdade.
+  if (pathname === "/login") return <>{children}</>;
+
   return (
     <div className="flex min-h-screen flex-col md:flex-row">
       <header className="flex items-center justify-between border-b border-border bg-panel px-4 py-3 md:hidden">

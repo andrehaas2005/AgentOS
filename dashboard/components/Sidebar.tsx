@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { Bot, Building2, CalendarDays, FileText, LayoutDashboard, Send } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { Bot, Building2, CalendarDays, FileText, LayoutDashboard, LogOut, Send } from "lucide-react";
 
 const NAV_ITEMS = [
   { href: "/", label: "Visão Geral", icon: LayoutDashboard },
@@ -18,25 +18,45 @@ const CLASSE_MOBILE = "flex w-full flex-col gap-1";
 
 export function Sidebar({ mobile, onNavigate }: { mobile?: boolean; onNavigate?: () => void }) {
   const pathname = usePathname();
+  const router = useRouter();
+
+  async function sair() {
+    await fetch("/auth/logout", { method: "POST" });
+    router.push("/login");
+    router.refresh();
+  }
 
   return (
-    <aside className={mobile ? CLASSE_MOBILE : CLASSE_DESKTOP}>
-      {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
-        const active = pathname === href;
-        return (
-          <Link
-            key={href}
-            href={href}
-            onClick={onNavigate}
-            className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${
-              active ? "bg-surface text-white" : "text-gray-400 hover:bg-surface/60 hover:text-white"
-            }`}
-          >
-            <Icon size={18} />
-            {label}
-          </Link>
-        );
-      })}
+    <aside className={mobile ? CLASSE_MOBILE : `${CLASSE_DESKTOP} justify-between`}>
+      <div className="flex flex-col gap-1">
+        {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
+          const active = pathname === href;
+          return (
+            <Link
+              key={href}
+              href={href}
+              onClick={onNavigate}
+              className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${
+                active ? "bg-surface text-white" : "text-gray-400 hover:bg-surface/60 hover:text-white"
+              }`}
+            >
+              <Icon size={18} />
+              {label}
+            </Link>
+          );
+        })}
+      </div>
+      <button
+        type="button"
+        onClick={() => {
+          onNavigate?.();
+          sair();
+        }}
+        className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-gray-400 transition-colors hover:bg-surface/60 hover:text-white"
+      >
+        <LogOut size={18} />
+        Sair
+      </button>
     </aside>
   );
 }

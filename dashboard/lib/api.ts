@@ -736,13 +736,10 @@ export async function recriarSlideTurno(
 
 export async function publicarConteudo(id: string): Promise<{ ok: boolean; erro?: string }> {
   try {
-    // A rota de publicar é a única protegida por Basic Auth no nginx (é a única ação
-    // irreversível fora do AgentOS) — o valor já vem em base64 "usuario:senha" via env var.
-    const auth = process.env.NEXT_PUBLIC_PUBLICAR_BASIC;
-    const res = await fetch(`${API_URL}/api/conteudos/${id}/publicar`, {
-      method: "POST",
-      headers: auth ? { Authorization: `Basic ${auth}` } : undefined,
-    });
+    // Publicar de fato numa rede social é a ação irreversível — antes era protegida por
+    // Basic Auth só nessa rota do nginx; agora toda a API exige a sessão de login (cookie
+    // enviado automaticamente pelo navegador em requisição same-origin).
+    const res = await fetch(`${API_URL}/api/conteudos/${id}/publicar`, { method: "POST" });
     const corpo = await res.json().catch(() => null);
     if (!res.ok) return { ok: false, erro: corpo?.error ?? "Não foi possível publicar." };
     return { ok: true };
@@ -753,11 +750,7 @@ export async function publicarConteudo(id: string): Promise<{ ok: boolean; erro?
 
 export async function publicarConteudoLinkedin(id: string): Promise<{ ok: boolean; erro?: string }> {
   try {
-    const auth = process.env.NEXT_PUBLIC_PUBLICAR_BASIC;
-    const res = await fetch(`${API_URL}/api/conteudos/${id}/publicar-linkedin`, {
-      method: "POST",
-      headers: auth ? { Authorization: `Basic ${auth}` } : undefined,
-    });
+    const res = await fetch(`${API_URL}/api/conteudos/${id}/publicar-linkedin`, { method: "POST" });
     const corpo = await res.json().catch(() => null);
     if (!res.ok) return { ok: false, erro: corpo?.error ?? "Não foi possível publicar." };
     return { ok: true };

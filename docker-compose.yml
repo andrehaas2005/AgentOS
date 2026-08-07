@@ -30,6 +30,7 @@ services:
       META_GRAPH_VERSION: ${META_GRAPH_VERSION:-v24.0}
       OAUTH_STATE_SECRET: ${OAUTH_STATE_SECRET:-troque-este-segredo}
       LINKEDIN_API_VERSION: ${LINKEDIN_API_VERSION:-202607}
+      SESSION_SECRET: ${SESSION_SECRET:-troque-este-segredo}
     volumes:
       - uploads:/app/uploads
     depends_on:
@@ -46,9 +47,11 @@ services:
         # então o navegador deve chamar a API por caminho relativo — nunca o hostname
         # interno do Docker (agentos-backend), que só existe dentro da rede do compose.
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-}
-        NEXT_PUBLIC_PUBLICAR_BASIC: ${NEXT_PUBLIC_PUBLICAR_BASIC:-}
     environment:
       INTERNAL_API_URL: http://agentos-backend:4000
+      SESSION_SECRET: ${SESSION_SECRET:-troque-este-segredo}
+      ADMIN_USER: ${ADMIN_USER:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-troque-esta-senha}
     restart: unless-stopped
     depends_on:
       - agentos-backend
@@ -60,7 +63,6 @@ services:
     restart: unless-stopped
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
-      - ./nginx/.htpasswd:/etc/nginx/.htpasswd:ro
     ports:
       - "80:80"
     depends_on:

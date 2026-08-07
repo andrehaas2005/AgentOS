@@ -11,6 +11,9 @@ import { PublicarLinkedinPanel } from "./PublicarLinkedinPanel";
 import { TextoConteudo } from "./TextoConteudo";
 import { TipoPostSelector } from "./TipoPostSelector";
 import { ReplicarConteudoModal } from "./ReplicarConteudoModal";
+import { GerarVideoBotao } from "./GerarVideoBotao";
+
+const TIPOS_VIDEO = new Set(["animacao", "video_curto", "reels"]);
 
 const STATUS_LABEL: Record<string, string> = {
   planejado: "Planejado",
@@ -41,6 +44,7 @@ export function ConteudoPreviewCard({ conteudo, empresas }: { conteudo: Conteudo
   // Prompt visual é só uma descrição de mídia que ainda falta gerar/subir — assim que existe
   // mídia de verdade, o card deve mostrar a imagem em vez da prévia do prompt pra sempre.
   const mostrarPromptVisual = promptVisual && !temMidia;
+  const ehTipoVideo = TIPOS_VIDEO.has(conteudo.calendario.tipoPost);
 
   const contasSociais = conteudo.calendario.empresa.contasSociais;
   const redesAlvo = conteudo.calendario.redesAlvo;
@@ -74,6 +78,7 @@ export function ConteudoPreviewCard({ conteudo, empresas }: { conteudo: Conteudo
           <p className="line-clamp-4 text-[11px] italic text-gray-400">
             Prévia do prompt visual: &quot;{promptVisual}&quot;
           </p>
+          {ehTipoVideo && <GerarVideoBotao conteudoId={conteudo.id} />}
           <EnviarMidiaControle conteudoId={conteudo.id} />
         </div>
       ) : temMidia ? (

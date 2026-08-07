@@ -7,6 +7,7 @@ import { marcarAtivo, marcarInativo } from "./status";
 import { gerarTexto, gerarJson } from "../lib/llmClient";
 import { obterSkills } from "../lib/skillsAgentes";
 import { gerarUmaImagemBuffer } from "../lib/gerarImagemFallback";
+import { gerarUmVideoBuffer } from "../lib/gerarVideoBuffer";
 import { renderizarCarrosselEducativo, type SlideEducativo } from "../lib/slideRenderer";
 
 const TIPOS_QUE_PRECISAM_ARTE = new Set(["imagem_frase", "carrossel", "stories"]);
@@ -32,6 +33,7 @@ type ConteudoEstruturado = {
   promptImagens?: string[];
   slidesEducativo?: SlideEducativo[];
   roteiroVideo?: string;
+  promptVideo?: string;
   aprovado: boolean;
   observacoesRevisor: string;
   notasAgentesCustomizados?: { agente: string; nota: string }[];
@@ -108,6 +110,14 @@ async function gerarImagemDoPost(conteudoId: string, promptImagem: string): Prom
 // Gera uma imagem por prompt, em ordem — cada slide do carrossel precisa manter a
 // sequência em que o Diretor de Arte desenhou a narrativa (gancho → ... → CTA).
 // Slides que falharem na geração são pulados (não travam o carrossel inteiro).
+async function gerarVideoDoPost(conteudoId: string, promptVideo: string): Promise<string | null> {
+  const buffer = await gerarUmVideoBuffer(promptVideo);
+  if (!buffer) return null;
+  const nomeArquivo = `${conteudoId}-${Date.now()}.mp4`;
+  fs.writeFileSync(path.join(PASTA_MIDIA, nomeArquivo), buffer);
+  return `/uploads/conteudos/${nomeArquivo}`;
+}
+
 async function gerarImagensCarrossel(conteudoId: string, prompts: string[]): Promise<string[]> {
   const urls: string[] = [];
   for (let i = 0; i < prompts.length; i++) {
@@ -178,6 +188,7 @@ export async function executarAgenteCeo(calendarioItemId: string) {
     let promptImagens: string[] | undefined;
     let slidesEducativo: SlideEducativo[] | undefined;
     let roteiroVideo: string | undefined;
+    let promptVideo: string | undefined;
 
     if (item.tipoPost === "carrossel") {
       const conteudoArte = await rodarEtapa<{
@@ -249,12 +260,27 @@ export async function executarAgenteCeo(calendarioItemId: string) {
     }
 
     if (precisaVideo) {
-      roteiroVideo = await rodarEtapa("diretor-video", item.empresaId, "Gerar roteiro de vídeo", () =>
-        gerarTexto(
-          skills["diretor-video"].prompt,
-          `${contexto}\n\nÂngulo: ${angulo}\n\nLegenda: ${conteudoRedator.legenda}\n\nEscreva o roteiro do vídeo/reels.`,
-        ),
+      const conteudoVideo = await rodarEtapa<{ roteiro: string; promptVideo: string }>(
+        "diretor-video",
+        item.empresaId,
+        "Gerar roteiro e prompt de vídeo",
+        () =>
+          gerarJson(
+            skills["diretor-video"].prompt,
+            `${contexto}\n\nÂngulo: ${angulo}\n\nLegenda: ${conteudoRedator.legenda}\n\nEscreva o roteiro e o prompt de geração do vídeo/reels.`,
+            {
+              type: "OBJECT",
+              properties: {
+                roteiro: { type: "STRING" },
+                promptVideo: { type: "STRING" },
+              },
+              required: ["roteiro", "promptVideo"],
+            },
+            { empresaId: item.empresaId },
+          ),
       );
+      roteiroVideo = conteudoVideo.roteiro;
+      promptVideo = conteudoVideo.promptVideo;
     }
 
     const revisao = await rodarEtapa<{
@@ -290,6 +316,7 @@ export async function executarAgenteCeo(calendarioItemId: string) {
       promptImagens,
       slidesEducativo,
       roteiroVideo,
+      promptVideo,
       aprovado: revisao.aprovado,
       observacoesRevisor: revisao.observacoes,
     };
@@ -351,6 +378,11 @@ export async function executarAgenteCeo(calendarioItemId: string) {
       }
     } else if (precisaArte && promptImagem) {
       const midiaUrl = await gerarImagemDoPost(conteudo.id, promptImagem);
+      if (midiaUrl) {
+        await prisma.conteudo.update({ where: { id: conteudo.id }, data: { midiaUrls: { push: midiaUrl } } });
+      }
+    } else if (precisaVideo && promptVideo) {
+      const midiaUrl = await gerarVideoDoPost(conteudo.id, promptVideo);
       if (midiaUrl) {
         await prisma.conteudo.update({ where: { id: conteudo.id }, data: { midiaUrls: { push: midiaUrl } } });
       }

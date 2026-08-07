@@ -22,6 +22,7 @@ function temPromptSalvo(metadata: ConteudoMetadata | null | undefined, indice: n
   if (metadata.slidesEducativo?.[indice]?.promptFoto) return true;
   if (metadata.promptImagens?.[indice]) return true;
   if (indice === 0 && metadata.promptImagem) return true;
+  if (indice === 0 && metadata.promptVideo) return true;
   return false;
 }
 
@@ -131,7 +132,7 @@ export function CarrosselMidia({
               <MessageCircle size={13} />
             </button>
           )}
-          {!video && !ehSlideEducativo && temPromptSalvo(metadata, indice) && (
+          {!ehSlideEducativo && temPromptSalvo(metadata, indice) && (
             <button
               type="button"
               onClick={regenerar}

@@ -10,7 +10,12 @@ import { PublicacaoInstagramError } from "../lib/publicarInstagram";
 import { PublicacaoLinkedinError } from "../lib/publicarLinkedin";
 import { aprovarConteudo, executarPublicacaoAgente, atualizarStatusAposPublicacao } from "../lib/aprovacao";
 import { TIPOS_POST } from "../lib/tiposPost";
-import { removerArquivoMidiaDoDisco, regenerarMidiaConteudo, RegeneracaoIndisponivelError } from "../lib/midiaConteudo";
+import {
+  removerArquivoMidiaDoDisco,
+  regenerarMidiaConteudo,
+  gerarVideoInicialConteudo,
+  RegeneracaoIndisponivelError,
+} from "../lib/midiaConteudo";
 import { dispararRevisao } from "../lib/revisao";
 import { replicarConteudo } from "../lib/replicarConteudo";
 import { dispararTurnoRecriacaoSlide } from "../lib/recriarSlide";
@@ -141,6 +146,17 @@ conteudosRouter.post("/:id/midia/regenerar", async (req, res) => {
   } catch (erro) {
     res.status(erro instanceof RegeneracaoIndisponivelError ? 502 : 400).json({
       error: erro instanceof Error ? erro.message : "Erro inesperado ao gerar a mídia.",
+    });
+  }
+});
+
+conteudosRouter.post("/:id/midia/gerar-video", async (req, res) => {
+  try {
+    const conteudo = await gerarVideoInicialConteudo(req.params.id);
+    res.json(conteudo);
+  } catch (erro) {
+    res.status(erro instanceof RegeneracaoIndisponivelError ? 502 : 400).json({
+      error: erro instanceof Error ? erro.message : "Erro inesperado ao gerar o vídeo.",
     });
   }
 });

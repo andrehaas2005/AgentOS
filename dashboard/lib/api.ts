@@ -92,6 +92,7 @@ export type ConteudoMetadata = {
     corOverride?: string;
   }[];
   roteiroVideo?: string;
+  promptVideo?: string;
   notasAgentesCustomizados?: { agente: string; nota: string }[];
   ultimaRevisao?: { versaoRevisada: number; aprovado: boolean; observacoes: string; revisadoEm: string };
 };
@@ -630,6 +631,19 @@ export async function regenerarMidiaConteudo(id: string, indice: number): Promis
     });
     const corpo = await res.json().catch(() => null);
     if (!res.ok) return { ok: false, erro: corpo?.error ?? "Não foi possível gerar a mídia novamente." };
+    return { ok: true };
+  } catch {
+    return { ok: false, erro: "Falha de conexão com o backend." };
+  }
+}
+
+// Pra conteúdo de vídeo criado antes da geração automática existir (midiaUrls vazio, só
+// roteiro salvo) — gera o vídeo pela primeira vez a partir do roteiro/prompt já existente.
+export async function gerarVideoInicialConteudo(id: string): Promise<{ ok: boolean; erro?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/api/conteudos/${id}/midia/gerar-video`, { method: "POST" });
+    const corpo = await res.json().catch(() => null);
+    if (!res.ok) return { ok: false, erro: corpo?.error ?? "Não foi possível gerar o vídeo." };
     return { ok: true };
   } catch {
     return { ok: false, erro: "Falha de conexão com o backend." };
